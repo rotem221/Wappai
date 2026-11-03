@@ -43,3 +43,9 @@ Verified desktop, 390/320-pixel layouts, the combined downloads dialog, keyboard
 `release-config.js` contains `appStoreUrl: null`. Replace it with the actual `https://apps.apple.com/.../id...` listing after publication. Until then the UI shows a non-link “בקרוב ב־App Store”; no unsigned IPA is offered in the site UI. Developer artifacts remain in GitHub Releases. Keep the terms/privacy/accessibility pages in sync when this changes.
 
 Validation: `node --test tests/web-install.test.mjs` covers release checksum, truncation, mutation, wrong chip header, manifest constraints and store URL validation. Browser QA exercised initial verification, board-confirmation gating, a deliberately corrupted local file (blocked), successful retry after restoring the original, and narrow-screen layout. No actual USB flash was performed for this website change.
+
+## Branding, hardware catalog and update checks (version 7)
+
+Redaction 70 Bold from the official Google Fonts repository is served locally under SIL OFL. The opening uses two explicit install/App Store actions and a hardware/price dialog. Official Waveshare links distinguish the silver 1.75C from the original 1.75 series; prices are USD reference ranges, not quotes or Wappai hardware sales.
+
+The installer accepts an exact board ID from the URL or selector; unknown and unvalidated boards are blocked. Manual update discovery reads the public GitHub firmware catalog, never automatically swaps the verified install bytes. iOS supplies the matching board ID in its update link. Additional-board binaries and production OTA are not enabled until hardware qualification; see the public `docs/HARDWARE_SUPPORT.md`.

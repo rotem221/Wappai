@@ -32,3 +32,8 @@ test('browser manifest is limited to the validated board and prompts before eras
   assert.equal(manifest.builds[0].chipFamily,'ESP32-S3');
   assert.deepEqual(manifest.builds[0].parts,[{path:'Wappai-1.75C-factory.bin',offset:0}]);
 });
+test('unsupported and unknown boards cannot inherit the 1.75C firmware',async()=>{
+  const {firmwareForBoard}=await import('../release-config.js');
+  assert.equal(firmwareForBoard('ws-s3-175c').sha256,firmware.sha256);
+  for(const board of ['ws-s3-175','ws-s3-18','ws-s3-216','ESP32-S3','unknown',''])assert.equal(firmwareForBoard(board),null);
+});

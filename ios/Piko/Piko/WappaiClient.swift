@@ -60,7 +60,7 @@ enum SecureStore {
     init() {
         paired = !token.isEmpty
         if uiTesting {
-            paired=true;connected=true;device=DeviceStatus(online:true,fw_version:"QA",battery:.init(pct:75,charging:false),rssi:-55,board:"ws-s3-175c")
+            paired=true;connected=true;device=DeviceStatus(online:true,fw_version:"1.0.0-dev",battery:.init(pct:75,charging:false),rssi:-55,board:"ws-s3-175c")
             active="ui-qa";sessions=[.init(id:active,title:"בדיקת ממשק",provider:"codex",created:0)]
             messages=[.init(id:"qa-message",session_id:active,role:"assistant",text:"בדיקה מקומית ללא חיבור לשרת",created:0)]
             chosenID="pip";chosenPip=0;chosenColor=0

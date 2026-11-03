@@ -3,6 +3,7 @@ import SwiftUI
 struct RootView:View {
     @StateObject private var client=WappaiClient()
     @StateObject private var bluetooth=WappaiBluetooth()
+    @StateObject private var firmwareUpdates=FirmwareUpdates()
     @Environment(\.scenePhase) private var phase
     @AppStorage("wappai.appearance") private var appearance="system"
     @AppStorage("wappai.characterSounds") private var characterSounds=true
@@ -84,7 +85,7 @@ struct RootView:View {
             }
             .onChange(of:bluetooth.wifiConnected){_,connected in if connected {showPairing=false}}
             .onChange(of:client.device.online){_,online in if online && !bluetooth.joining {showPairing=false}}
-            .onChange(of:phase){_,value in if value == .active {client.start();bluetooth.scan()}else{client.stop();bluetooth.stopScan()}}
+            .onChange(of:phase){_,value in if value == .active {client.start();bluetooth.scan();Task{if client.device.online{await firmwareUpdates.check(board:client.device.board,version:client.device.fw_version,fixture:client.uiTesting)}}}else{client.stop();bluetooth.stopScan()}}
             .task {
                 let args=ProcessInfo.processInfo.arguments
                 #if DEBUG
@@ -99,6 +100,13 @@ struct RootView:View {
                 else {client.start()}
             }
         }.tint(Color(rgb:0x258E73))
+         .task(id:(client.device.board ?? "")+":"+(client.device.fw_version ?? "")+":"+String(client.device.online)) {
+             if client.device.online {await firmwareUpdates.check(board:client.device.board,version:client.device.fw_version,fixture:client.uiTesting)}
+         }
+         .alert("עדכון קושחה זמין",isPresented:Binding(get:{firmwareUpdates.notice != nil},set:{if !$0{firmwareUpdates.notice=nil}})) {
+             Button("פרטי העדכון"){firmwareUpdates.notice=nil;showSettings=true}
+             Button("מאוחר יותר",role:.cancel){firmwareUpdates.notice=nil}
+         } message:{Text("פורסמה גרסה חדשה שמתאימה לדגם שלכם. ניתן לבדוק את פרטי ההתקנה בהגדרות.")}
          .preferredColorScheme(appearance=="system" ? nil:appearance=="light" ? .light:.dark)
          .modifier(ConversationDrawer(client:client,visible:$showSessions))
          .onChange(of:client.state){_,state in
@@ -132,6 +140,7 @@ struct RootView:View {
         NavigationStack{Form{
             Section("המכשיר שלי"){
                 DeviceInfoCard(device:client.device,hardware:bluetooth.hardware,connected:client.connected)
+                FirmwareUpdateCard(updates:firmwareUpdates,device:client.device,fixture:client.uiTesting)
                 Button("רשת Wi‑Fi ומכשיר"){bluetooth.beginSetup();showSettings=false;showPairing=true}
                 Button("דמויות ויצירת Pip"){showSettings=false;showPips=true}
             }

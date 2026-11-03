@@ -64,4 +64,16 @@ final class WappaiUITests:XCTestCase {
         let screenshot=XCTAttachment(screenshot:app.screenshot());screenshot.name="ElevenLabs setup";screenshot.lifetime = .keepAlways;add(screenshot)
     }
 
+    func testFirmwareUpdateCheckUsesCurrentBoardAndDoesNotInstall() {
+        app.buttons["הגדרות"].tap()
+        let check=app.buttons["checkFirmwareUpdates"]
+        XCTAssertTrue(check.waitForExistence(timeout:10))
+        check.tap()
+        let status=app.staticTexts["firmwareUpdateStatus"]
+        XCTAssertTrue(status.waitForExistence(timeout:5))
+        XCTAssertTrue(status.label.contains("בדיקת ממשק מקומית"))
+        XCTAssertFalse(app.buttons["התקנת העדכון באמצעות מחשב ו־USB"].exists)
+        let screenshot=XCTAttachment(screenshot:app.screenshot());screenshot.name="Firmware update settings";screenshot.lifetime = .keepAlways;add(screenshot)
+    }
+
 }

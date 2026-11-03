@@ -14,3 +14,12 @@ export const firmware = Object.freeze({
   bytes: 3455040,
   sha256: 'ed8f6600a79160ba2b54b7beb6c3b4c7e0c775e1bcf8e124feb6c63a532508b9',
 });
+
+export const boardNames = Object.freeze({
+  'ws-s3-175c':'Waveshare 1.75C', 'ws-s3-175':'Waveshare 1.75',
+  'ws-s3-18':'Waveshare 1.8', 'ws-s3-216':'Waveshare 2.16',
+});
+export function firmwareForBoard(board) {
+  // No fallback between boards that happen to use the same ESP32-S3 chipset.
+  return board === 'ws-s3-175c' ? firmware : null;
+}

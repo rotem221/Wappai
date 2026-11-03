@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "repository": "rotem221/Wappai",
+  "updated_at": "2026-11-04",
+  "boards": [
+    {
+      "id": "ws-s3-175c",
+      "name": "Waveshare 1.75C",
+      "status": "available",
+      "screen": [
+        466,
+        466
+      ],
+      "chip": "ESP32-S3",
+      "release": {
+        "version": "1.0.0-dev",
+        "package_version": "1.0.0-dev.1",
+        "channel": "development",
+        "release_url": "https://github.com/rotem221/Wappai/releases/tag/v1.0.0-dev.1",
+        "install_url": "https://wappai-companion.rotem221.chatgpt.site/flash.html?board=ws-s3-175c",
+        "update_method": "usb",
+        "factory_file": "Wappai-1.75C-factory.bin",
+        "sha256": "ed8f6600a79160ba2b54b7beb6c3b4c7e0c775e1bcf8e124feb6c63a532508b9",
+        "bytes": 3455040
+      }
+    },
+    {
+      "id": "ws-s3-175",
+      "name": "Waveshare 1.75",
+      "status": "unvalidated",
+      "screen": [
+        466,
+        466
+      ],
+      "chip": "ESP32-S3",
+      "release": null
+    },
+    {
+      "id": "ws-s3-18",
+      "name": "Waveshare 1.8",
+      "status": "unvalidated",
+      "screen": [
+        368,
+        448
+      ],
+      "chip": "ESP32-S3",
+      "release": null
+    },
+    {
+      "id": "ws-s3-216",
+      "name": "Waveshare 2.16",
+      "status": "unvalidated",
+      "screen": [
+        480,
+        480
+      ],
+      "chip": "ESP32-S3",
+      "release": null
+    }
+  ]
+}
