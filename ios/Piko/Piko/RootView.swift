@@ -77,6 +77,8 @@ struct RootView:View {
             .sheet(isPresented:$showSettings){settings}
             .sheet(isPresented:$showMeetings){NavigationStack{MeetingLibrary(client:client).toolbar{ToolbarItem(placement:.confirmationAction){Button("סיום"){showMeetings=false}}}}}
             .onReceive(NotificationCenter.default.publisher(for:Notification.Name("WappaiPushToken"))){_ in Task{await notifications.sync(client:client)}}
+            .onChange(of:notifications.openPips,initial:true){_,open in if open{showSettings=false;showMeetings=false;showPips=true;notifications.openPips=false}}
+            .safeAreaInset(edge:.top){PipCompletionBanner(client:client)}
             .onChange(of:notifications.openMeetings){_,open in if open{showSettings=false;showMeetings=true;notifications.openMeetings=false}}
             .task(id:client.paired){if client.paired {await notifications.sync(client:client)}}
             .sheet(isPresented:$showPips){PipGallery(client:client)}

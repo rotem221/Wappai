@@ -33,11 +33,20 @@ class PipStudio:
                     job.update(status='ready',installed=False,installation_error='השרת הופעל מחדש. אפשר לטעון את הדמות מהגלריה.');self.save(job);continue
                 job.update(status='failed',error='היצירה הופסקה כשהשרת הופעל מחדש. אפשר להמשיך מהתצוגה המקדימה או לנסות שוב.');self.save(job)
         store.db.commit()
-    def jobs(self,all=False):return [json.loads(r['body']) for r in self.store.rows('SELECT body FROM pip_jobs ORDER BY created DESC'+('' if all else ' LIMIT 64'))]
+    def jobs(self,all=False):return [self.info(json.loads(r['body'])) for r in self.store.rows('SELECT body FROM pip_jobs ORDER BY created DESC'+('' if all else ' LIMIT 64'))]
     def get(self,jid):
         rows=self.store.rows('SELECT body FROM pip_jobs WHERE id=?',(jid,))
         if not rows:raise HTTPException(404,'היצירה לא נמצאה')
-        return json.loads(rows[0]['body'])
+        return self.info(json.loads(rows[0]['body']))
+    def info(self,job):return {**job,'has_reference':(self.root/job['id']/'reference.png').is_file()}
+    async def completed(self,job):
+        await self.emit({'type':'pip.job.completed','job_id':job['id'],'status':job['status'],'name':job['name']})
+        try:
+            from .notifications import service
+            service.enqueue('pips',job['id']+':'+job['status'],job['id'],stage=job['status'])
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception('Pip notification could not be queued')
     def save(self,j):
         j['updated']=time.time();self.store.db.execute('INSERT INTO pip_jobs VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET body=excluded.body',(j['id'],json.dumps(j,ensure_ascii=False),j['created']));self.store.db.commit()
     def selected(self):
@@ -52,6 +61,14 @@ class PipStudio:
         p=self.pip(pid)
         if pid in BUILTINS:raise HTTPException(403,'דמויות ברירת המחדל מוגנות מעריכה וממחיקה')
         return p
+    def reference_path(self,pid):
+        p=self.writable(pid)
+        for job in self.jobs(True):
+            if job['pip_id']==pid and job['status']=='ready':
+                path=self.root/job['id']/'reference.png'
+                if path.is_file():return path
+                break
+        return self.root/'assets'/(p.get('asset_id') or '')/'preview.png'
     async def image(self,prompt,reference=None):
         token=os.environ.get('WAPPAI_CODEX_BRIDGE_TOKEN')
         if not token:raise RuntimeError('חיבור יצירת התמונות של Codex אינו מוגדר')
@@ -80,6 +97,7 @@ class PipStudio:
                     (directory/'preview-source.png').write_bytes(raw)
                     result=await asyncio.to_thread(pip_assets.preview,raw);(directory/'preview.png').write_bytes(result)
                     job.update(status='preview_ready',progress=25,preview_sha=hashlib.sha256(result).hexdigest(),error='');self.save(job)
+                    await self.completed(job)
                 else:
                     approved=(directory/'preview.png').read_bytes()
                     job.update(progress=35);self.save(job)
@@ -110,6 +128,7 @@ class PipStudio:
                             job['status']='applying';self.save(job);await self.activate(job['pip_id']);job['installed']=True
                         except HTTPException as error:job['installed']=False;job['installation_error']=str(error.detail)
                         job['status']='ready';self.save(job)
+                    await self.completed(job)
         except asyncio.CancelledError:
             job.update(status='cancelled',error='היצירה בוטלה');self.save(job);raise
         except Exception as error:
@@ -157,26 +176,47 @@ class PipStudio:
             d=await json_object(request)
             if not isinstance(d,dict) or not isinstance(d.get('name',''),str) or not isinstance(d.get('description',''),str) or d.get('target') is not None and not isinstance(d['target'],str):raise HTTPException(422,'שם ותיאור לא תקינים')
             name=d.get('name','').strip();brief=d.get('description','').strip();target=d.get('target')
+            if type(d.get('discard_reference',False)) is not bool:raise HTTPException(422,'בחירת תמונה אינה תקינה')
             old=self.writable(target) if target else None
+            previous=None
+            if d.get('replaces_job') is not None:
+                if not isinstance(d['replaces_job'],str):raise HTTPException(422,'היצירה הקודמת אינה תקינה')
+                previous=self.get(d['replaces_job'])
+                if previous['status'] not in ('preview_ready','failed','cancelled') or previous['id'] in self.tasks:raise HTTPException(409,'לא ניתן לשנות יצירה פעילה או שהושלמה')
+                if previous.get('target')!=target:raise HTTPException(422,'יעד העריכה אינו תואם ליצירה המקורית')
             if len(self.tasks)>=2:raise HTTPException(409,'כבר מתבצעות שתי יצירות; המתינו לסיום')
             reference=None
             if d.get('reference'):
                 try:reference=pip_assets.reference_image(base64.b64decode(d['reference'],validate=True))
                 except Exception:raise HTTPException(422,'התמונה אינה תקינה או ריקה. בחרו תמונה ברורה בגודל 32×32 פיקסלים לפחות ונסו שוב.')
-                brief='צור Pip מהדמות המרכזית בתמונה. שמור על זהותה והצבעים שלה בסגנון הפיקסלים של Wappai, מותאם למסך המכשיר.'
+                brief=brief or 'צור Pip מהדמות המרכזית בתמונה. שמור על זהותה והצבעים שלה בסגנון הפיקסלים של Wappai, מותאם למסך המכשיר.'
                 name=name or (old['name'] if old else 'Pip חדש')
             if not 1<=len(name)<=30 or len(name.encode())>63 or not 3<=len(brief)<=1200:raise HTTPException(422,'יש להזין שם ותיאור, או לבחור תמונה')
-            if reference is None and old and old.get('asset_id'):reference=(self.root/'assets'/old['asset_id']/'preview.png').read_bytes()
+            if reference is None and old and old.get('asset_id') and not d.get('discard_reference',False):
+                reference=self.reference_path(target).read_bytes()
             jid=uuid.uuid4().hex;directory=self.root/jid;directory.mkdir()
             if reference:(directory/'reference.png').write_bytes(reference)
-            job={'id':jid,'pip_id':target or uuid.uuid4().hex,'name':name,'description':brief,'target':target,'previous_asset':old.get('asset_id') if old else None,'status':'preview_generating','progress':5,'created':time.time(),'error':''}
-            self.save(job);self.launch(jid,'preview');return job
+            job={'id':jid,'pip_id':target or (previous['pip_id'] if previous else uuid.uuid4().hex),'name':name,'description':brief,'target':target,'previous_asset':old.get('asset_id') if old else None,'status':'preview_generating','progress':5,'created':time.time(),'error':'','has_reference':reference is not None}
+            self.save(job)
+            if previous:
+                previous.update(status='superseded',replaced_by=jid);self.save(previous)
+            self.launch(jid,'preview');return job
         @app.get('/v1/pip-jobs/{jid}')
         async def status(jid:str,request:Request):self.auth(request);return self.get(jid)
         @app.get('/v1/pip-jobs/{jid}/preview.png')
         async def job_preview(jid:str,request:Request):
             self.auth(request);self.get(jid);path=self.root/jid/'preview.png'
             if not path.is_file():raise HTTPException(404)
+            return FileResponse(path,media_type='image/png')
+        @app.get('/v1/pip-jobs/{jid}/reference.png')
+        async def job_reference(jid:str,request:Request):
+            self.auth(request);self.get(jid);path=self.root/jid/'reference.png'
+            if not path.is_file():raise HTTPException(404,'אין תמונת מקור ליצירה זו')
+            return FileResponse(path,media_type='image/png')
+        @app.get('/v1/pips/{pid}/reference.png')
+        async def pip_reference(pid:str,request:Request):
+            self.auth(request);path=self.reference_path(pid)
+            if not path.is_file():raise HTTPException(404,'אין תמונת מקור לדמות זו')
             return FileResponse(path,media_type='image/png')
         @app.post('/v1/pip-jobs/{jid}/apply')
         async def apply(jid:str,request:Request):

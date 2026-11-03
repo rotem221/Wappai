@@ -1,6 +1,7 @@
 """Run against web_qa_server.py only; artifacts go outside the repository."""
 from pathlib import Path
-import json, os
+import json, os, base64, io
+from PIL import Image
 from playwright.sync_api import sync_playwright, expect
 port=int(os.environ.get('QA_PORT','8876'));BASE=f'http://127.0.0.1:{port}'
 OUT=Path.home()/('.cache/wappai-build/web-qa-'+os.environ.get('QA_BROWSER','chrome'));OUT.mkdir(exist_ok=True)
@@ -56,12 +57,26 @@ with sync_playwright() as pw:
     # Photo mode accepts no name or description and still gates the full build.
     page.locator('#pip-image').set_input_files(str(Path(__file__).resolve().parents[2]/'server/sim/pixel-0-0.png'))
     expect(page.locator('#reference-preview')).to_be_visible()
-    expect(page.locator('#pip-name')).to_be_hidden();expect(page.locator('#pip-description')).to_be_hidden()
-    expect(page.locator('#pip-form button')).to_have_text('אישור התמונה ויצירת תצוגה מקדימה')
-    page.locator('#pip-form button').click();expect(page.locator('[data-apply]')).to_be_visible()
+    expect(page.locator('#pip-name')).to_be_hidden();expect(page.locator('#pip-description')).to_be_visible()
+    expect(page.locator('#pip-form .primary')).to_have_text('אישור התמונה ויצירת תצוגה מקדימה')
+    page.locator('#pip-description').fill('Lavender traveler with green scarf')
+    source=page.locator('#reference-preview').get_attribute('src')
+    page.locator('#pip-form .primary').click();expect(page.locator('[data-apply]')).to_be_visible()
+    expect(page.locator('.pip-grid .job')).to_have_count(1)
+    assert page.locator('.pip-grid').bounding_box()['y'] < page.locator('#create-pip').bounding_box()['y']
+    page.locator('[data-edit-job]').click()
+    expect(page.locator('#reference-preview')).to_be_visible()
+    expect(page.locator('#pip-description')).to_have_value('Lavender traveler with green scarf')
+    restored=page.locator('#reference-preview').get_attribute('src')
+    assert Image.open(io.BytesIO(base64.b64decode(restored.split(',')[1]))).convert('RGBA').tobytes()==Image.open(io.BytesIO(base64.b64decode(source.split(',')[1]))).convert('RGBA').tobytes()
+    page.locator('#pip-description').fill('Lavender traveler with green scarf and boots')
+    page.locator('#pip-form .primary').click();expect(page.locator('[data-apply]')).to_be_visible()
+    expect(page.locator('.pip-grid .job')).to_have_count(1)
+    emit({'type':'pip.job.completed','status':'preview_ready'})
+    expect(page.locator('#notice')).to_contain_text('התצוגה המקדימה מוכנה')
     page.screenshot(path=str(OUT/'preview-approval.png'))
     page.locator('[data-apply]').click();expect(page.locator('#jobs')).to_contain_text('יוצר את כל ההבעות')
-    page.locator('[data-cancel]').click();expect(page.locator('#jobs')).to_contain_text('בוטלה')
+    page.locator('[data-cancel]').click();expect(page.locator('#jobs .job')).to_have_count(0)
     page.locator('#close-panel').click()
     # Real custom CRUD routes with an inexpensive palette Pip; protected built-ins stay immutable.
     pid=page.evaluate("async()=>{const r=await fetch('/v1/pips',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:'Custom QA',rig:1,color:8450765})});return (await r.json()).id}")

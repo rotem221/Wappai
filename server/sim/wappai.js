@@ -272,6 +272,11 @@ function event(e) {
       if (petPlayer) petPlayer.motion = "idle";
       refresh().catch(() => {});
       break;
+    case "pip.job.completed":
+      notice(e.status === "preview_ready" ? "התצוגה המקדימה מוכנה לאישור בגלריה" : "ה־Pip והאנימציות שלו מוכנים בגלריה");
+      if ($("#jobs")) pips().catch(() => {});
+      else refresh().catch(() => {});
+      break;
     case "session.deleted":
     case "session.active":
     case "pips.updated":
@@ -613,7 +618,7 @@ async function pips() {
   await refresh();
   panel(
     "הדמויות שלי",
-    `<p class="hint">אותן דמויות, בכל המסכים שלך.</p><div class="pip-grid">${state.pips.map((p) => `<button class="pip-tile ${p.id === state.selected_pip ? "selected" : ""}" data-pip="${esc(p.id)}"><canvas width="192" height="192"></canvas><strong>${esc(p.name)}</strong><small>${p.id === state.selected_pip ? "הדמות הנוכחית" : ["pip", "nori", "orbit"].includes(p.id) ? "דמות מובנית" : "הדמות שלך"}</small></button>`).join("")}</div><button class="primary" id="create-pip">＋ יצירת דמות חדשה</button><h3 class="section-title">היצירות שלך</h3><div id="jobs"></div>`,
+    `<p class="hint">אותן דמויות, בכל המסכים שלך.</p><div class="pip-grid">${state.pips.map((p) => `<button class="pip-tile ${p.id === state.selected_pip ? "selected" : ""}" data-pip="${esc(p.id)}"><canvas width="192" height="192"></canvas><strong>${esc(p.name)}</strong><small>${p.id === state.selected_pip ? "הדמות הנוכחית" : ["pip", "nori", "orbit"].includes(p.id) ? "דמות מובנית" : "הדמות שלך"}</small></button>`).join("")}<div id="jobs" class="pip-drafts"></div></div><button class="primary" id="create-pip">＋ יצירת דמות חדשה</button>`,
   );
   $("#panel-body")
     .querySelectorAll("[data-pip]")
@@ -631,13 +636,19 @@ async function pips() {
 async function jobs() {
   const list = await api("/v1/pip-jobs");
   if (!$("#jobs")) return;
+  const seen = new Set();
+  const drafts = list.filter(j => !["ready","cancelled","superseded"].includes(j.status) && !seen.has(j.pip_id) && seen.add(j.pip_id));
   $("#jobs").innerHTML =
-    list
+    drafts
       .map(
         (j) =>
-          `<div class="job"><strong>${esc(j.name)}</strong><p>${esc({ preview_generating: "מכין תצוגה מקדימה", preview_ready: "התצוגה המקדימה מוכנה", building: "יוצר את כל ההבעות והתנועות", applying: "מעביר למכשיר", ready: "הדמות מוכנה", failed: "היצירה נעצרה", cancelled: "היצירה בוטלה" }[j.status] || j.status)} · ${j.progress || 0}%</p>${j.error ? `<p class="hint">${esc(j.error)}</p>` : ""}${j.preview_sha ? `<img class="pip-preview" src="/v1/pip-jobs/${esc(j.id)}/preview.png" alt="תצוגה מקדימה של ${esc(j.name)}">` : ""}<div class="actions">${j.preview_sha && ["preview_ready", "failed"].includes(j.status) ? `<button class="primary" data-apply="${esc(j.id)}">אישור ויצירה מלאה</button>` : ""}${["preview_generating", "preview_ready", "building", "failed"].includes(j.status) ? `<button class="secondary" data-cancel="${esc(j.id)}">ביטול</button>` : ""}</div></div>`,
+          `<div class="pip-tile job"><strong>${esc(j.name)}</strong><p>${esc({ preview_generating: "מכין תצוגה מקדימה", preview_ready: "תצוגה מקדימה", building: "יוצר את כל ההבעות והתנועות", applying: "מעביר למכשיר", ready: "הדמות מוכנה", failed: "היצירה נעצרה", cancelled: "היצירה בוטלה" }[j.status] || j.status)} · ${j.progress || 0}%</p>${j.error ? `<p class="hint">${esc(j.error)}</p>` : ""}${j.preview_sha ? `<img class="pip-preview" src="/v1/pip-jobs/${esc(j.id)}/preview.png" alt="תצוגה מקדימה של ${esc(j.name)}">` : ""}<div class="actions">${["preview_ready","failed"].includes(j.status) ? `<button class="secondary" data-edit-job="${esc(j.id)}">עריכת העיצוב</button>` : ""}${j.preview_sha && ["preview_ready", "failed"].includes(j.status) ? `<button class="primary" data-apply="${esc(j.id)}">אישור ויצירה מלאה</button>` : ""}${["preview_generating", "preview_ready", "building", "failed"].includes(j.status) ? `<button class="secondary" data-cancel="${esc(j.id)}">ביטול</button>` : ""}</div></div>`,
       )
-      .join("") || '<p class="hint">היצירות החדשות יופיעו כאן.</p>';
+      .join("");
+  $("#jobs").querySelectorAll("[data-edit-job]").forEach(b => action(b, async () => {
+    const job=list.find(j=>j.id===b.dataset.editJob);
+    await createPip(state.pips.find(p=>p.id===job.target),job);
+  }));
   $("#jobs")
     .querySelectorAll("[data-apply]")
     .forEach((b) =>
@@ -656,18 +667,21 @@ async function jobs() {
       }),
     );
 }
-function createPip(target) {
+async function createPip(target, draft=null) {
   panel(
     target ? "עיצוב מחדש" : "יצירת דמות חדשה",
-    `<p class="hint">תאר את הדמות או צרף תמונה. קודם נציג תצוגה מקדימה; רק לאחר אישורך ניצור את כל ההבעות והתנועות.</p><form id="pip-form">${field("שם הדמות", `<input id="pip-name" class="input" maxlength="30" required value="${esc(target?.name || "")}">`)}<div id="pip-description-field">${field("איך הדמות נראית?", `<textarea id="pip-description" class="input" maxlength="1200" rows="4" placeholder="למשל: שועל קטן בצבע לבנדר, עם צעיף ירוק ועיניים סקרניות">${esc(target?.description || "")}</textarea>`)}</div>${field("תמונת השראה (אפשרות)", '<input id="pip-image" class="input" type="file" accept="image/png,image/jpeg,image/webp">')}<img id="reference-preview" class="pip-preview" hidden alt="התמונה שבחרת"><button class="primary">יצירת תצוגה מקדימה</button></form>`,
+    `<p class="hint">תאר את הדמות או צרף תמונה. קודם נציג תצוגה מקדימה; רק לאחר אישורך ניצור את כל ההבעות והתנועות.</p><form id="pip-form">${field("שם הדמות", `<input id="pip-name" class="input" maxlength="30" required value="${esc(draft?.name ?? target?.name ?? "")}">`)}<div id="pip-description-field">${field("איך הדמות נראית?", `<textarea id="pip-description" class="input" maxlength="1200" rows="4" placeholder="למשל: שועל קטן בצבע לבנדר, עם צעיף ירוק ועיניים סקרניות">${esc(draft?.description ?? target?.description ?? "")}</textarea>`)}</div>${field("תמונת השראה (אפשרות)", '<input id="pip-image" class="input" type="file" accept="image/png,image/jpeg,image/webp">')}<img id="reference-preview" class="pip-preview" hidden alt="התמונה שבחרת"><button type="button" id="remove-reference" class="secondary" hidden>הסרת התמונה</button><button type="submit" class="primary">יצירת תצוגה מקדימה</button></form>`,
   );
-  let reference, loadingImage = false;
+  let reference, loadingImage = false, discardReference=false;
   const imageMode = () => {
-    $("#pip-description-field").hidden = !!reference;
+    $("#pip-description-field").hidden = false;
+    $("#remove-reference").hidden = !reference;
+    $("#pip-description").placeholder = reference ? "תיאור או הנחיות לתמונה (אפשרות)" : "תיאור הדמות, הצבעים והאופי";
     $("#pip-name").required = !reference;
     $("#pip-name").closest("label").hidden = !!reference;
     $("#pip-form .primary").textContent = reference ? "אישור התמונה ויצירת תצוגה מקדימה" : "יצירת תצוגה מקדימה";
   };
+  $("#remove-reference").onclick=()=>{reference=null;discardReference=true;$("#reference-preview").hidden=true;$("#pip-image").value="";imageMode();};
   $("#pip-image").onchange = async (e) => {
     reference = null;
     $("#reference-preview").hidden = true;
@@ -688,7 +702,7 @@ function createPip(target) {
       c.getContext("2d").drawImage(bitmap, 0, 0, c.width, c.height);
       bitmap.close();
       const data = c.toDataURL("image/png");
-      reference = data.split(",")[1];
+      reference = data.split(",")[1];discardReference=false;
       $("#reference-preview").src = data;
       $("#reference-preview").hidden = false;
     } catch (e) {
@@ -706,13 +720,15 @@ function createPip(target) {
     const b = e.submitter;
     b.disabled = true;
     try {
-      const description = reference ? "" : $("#pip-description").value.trim();
+      const description = $("#pip-description").value.trim();
       if (!reference && description.length < 3) throw Error("יש להוסיף תיאור או תמונה");
       await api("/v1/pip-jobs", {
-        name: reference ? (target?.name || "") : $("#pip-name").value.trim(),
+        name: $("#pip-name").value.trim(),
         description,
         reference,
-        target: target?.id,
+        target: draft?.target ?? target?.id,
+        replaces_job: draft?.id,
+        discard_reference: discardReference,
       });
       await pips();
     } catch (e) {
@@ -721,6 +737,18 @@ function createPip(target) {
       b.disabled = false;
     }
   };
+  const source=draft?.has_reference ? `/v1/pip-jobs/${draft.id}/reference.png` : !draft && target?.asset_id ? `/v1/pips/${target.id}/reference.png` : null;
+  if (source) {
+    loadingImage=true;$("#pip-form .primary").disabled=true;
+    try {
+      const blob=await api(source);
+      const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(blob);});
+      reference=data.split(",")[1];$("#reference-preview").src=data;$("#reference-preview").hidden=false;imageMode();
+      $("#pip-form .primary").disabled=false;
+    }catch{notice("לא ניתן לטעון את תמונת המקור. פתחו שוב את העריכה או בחרו תמונה חדשה.");}
+    finally{loadingImage=false;}
+  }
+
 }
 async function pipDetail(p) {
   const built = ["pip", "nori", "orbit"].includes(p.id);

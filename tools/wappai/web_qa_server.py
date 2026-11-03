@@ -48,7 +48,9 @@ from fastapi import Request
 @main.app.post('/__qa/event')
 async def test_event(request:Request):
     wappai.require(request)
-    await main.hub.emit(await request.json())
+    data=await request.json()
+    if data.get('type')=='pip.job.completed':await wappai.emit(data)
+    else:await main.hub.emit(data)
     return {'ok':True}
 @main.app.get('/__qa/capture')
 async def capture_info(request:Request):

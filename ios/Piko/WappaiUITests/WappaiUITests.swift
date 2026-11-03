@@ -115,11 +115,34 @@ final class WappaiUITests:XCTestCase {
         XCTAssertTrue(confirm.waitForExistence(timeout:8),app.debugDescription)
         XCTAssertTrue(confirm.isEnabled)
         XCTAssertFalse(app.textFields["שם הדמות"].exists)
-        XCTAssertFalse(app.descendants(matching:.any)["pipDescription"].firstMatch.exists)
+        XCTAssertTrue(app.descendants(matching:.any)["pipDescription"].firstMatch.exists)
         XCTAssertFalse(app.buttons["אישור ויצירה מלאה"].exists)
-        let screenshot=XCTAttachment(screenshot:app.screenshot());screenshot.name="Image confirmation without brief";screenshot.lifetime = .keepAlways;add(screenshot)
+        let screenshot=XCTAttachment(screenshot:app.screenshot());screenshot.name="Image confirmation with optional description";screenshot.lifetime = .keepAlways;add(screenshot)
         app.buttons["הסרת התמונה"].tap()
         XCTAssertTrue(app.textFields["שם הדמות"].waitForExistence(timeout:5))
         XCTAssertFalse(app.buttons["יצירת תצוגה מקדימה"].isEnabled)
+    }
+
+    func testDraftLivesInGalleryAndEditRestoresReferenceAndDescription() {
+        app.terminate();app.launchArguments=["--qa-ui-fixture","--qa-ui-reset","--qa-pip-draft","--show-pips"];app.launch()
+        let card=app.buttons["pipDraft-qa-draft"]
+        XCTAssertTrue(card.waitForExistence(timeout:10))
+        XCTAssertTrue(app.staticTexts["תצוגה מקדימה"].exists)
+        XCTAssertTrue(app.descendants(matching:.any)["pipCompletionNotice"].firstMatch.exists)
+        let create=app.buttons["יצירת Pip חדש"]
+        if !create.isHittable {app.swipeUp()}
+        XCTAssertLessThan(card.frame.minY,create.frame.minY)
+        let gallery=XCTAttachment(screenshot:app.screenshot());gallery.name="Preview card in gallery";gallery.lifetime = .keepAlways;add(gallery)
+        card.tap()
+        let edit=app.buttons["שינוי העיצוב ויצירת תצוגה חדשה"]
+        XCTAssertTrue(edit.waitForExistence(timeout:5));edit.tap()
+        let brief=app.descendants(matching:.any)["pipDescription"].firstMatch
+        XCTAssertTrue(brief.waitForExistence(timeout:5));XCTAssertEqual(brief.value as? String,"Lavender traveler with a green scarf")
+        XCTAssertTrue(app.images["התמונה שנבחרה"].exists)
+        XCTAssertTrue(app.buttons["אישור התמונה ויצירת תצוגה מקדימה"].isEnabled)
+        let restored=XCTAttachment(screenshot:app.screenshot());restored.name="Restored image and description";restored.lifetime = .keepAlways;add(restored)
+        app.buttons["הסרת התמונה"].tap()
+        XCTAssertEqual(brief.value as? String,"Lavender traveler with a green scarf")
+        XCTAssertTrue(app.textFields["שם הדמות"].exists)
     }
 }

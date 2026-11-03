@@ -23,6 +23,8 @@ enum SecureStore {
     }
 }
 @MainActor final class WappaiClient: ObservableObject {
+    @Published var pipJobs:[PipJob]=[]
+    @Published var pipNotice:String?
     @Published var sessions:[ChatSession]=[]
     @Published var messages:[ChatMessage]=[]
     @Published var pips:[PipSkin]=[.init(id:"pip",name:"Pip",rig:0,color:0x80F2CD),.init(id:"nori",name:"Nori",rig:1,color:0xFFB18E),.init(id:"orbit",name:"Orbit",rig:2,color:0x8DC8FF)]
@@ -64,6 +66,7 @@ enum SecureStore {
             active="ui-qa";sessions=[.init(id:active,title:"בדיקת ממשק",provider:"codex",created:0)]
             messages=[.init(id:"qa-message",session_id:active,role:"assistant",text:"בדיקה מקומית ללא חיבור לשרת",created:0)]
             chosenID="pip";chosenPip=0;chosenColor=0
+            if ProcessInfo.processInfo.arguments.contains("--qa-pip-draft") {UserDefaults.standard.set(["qa-draft":"preview_generating"],forKey:pipSeenKey)}
         }
     }
     private func url(_ path:String) throws -> URL {
@@ -76,6 +79,12 @@ enum SecureStore {
             if path=="/v1/meetings",body==nil{return Data(#"{"items":[{"id":"20261104-100000","title":"תכנון ההשקה","started":"2026-11-04T10:00:00","state":"done","minutes":24,"has_audio":false,"has_summary":true}],"capacity":{"remaining_seconds":7200,"used_bytes":850000000,"quota_bytes":4294967296,"cloud_configured":false,"max_session_seconds":18000},"recording":false}"#.utf8)}
             if path=="/v1/meetings/20261104-100000",body==nil{return Data(#"{"id":"20261104-100000","title":"תכנון ההשקה","state":"done","seconds":1440,"summary":"ההשקה מתוכננת ליום חמישי.\nדנה תסיים את בדיקת התקציב עד יום שני.","transcript":"[0:00:02] נתחיל בתכנון ההשקה.\n[0:00:08] דנה תבדוק את התקציב עד יום שני."}"#.utf8)}
             if path=="/v1/voice",body==nil{return Data(#"{"provider":"edge","style":"lively","edge_voice":"he-IL-HilaNeural","voice_id":"","model_id":"eleven_v3","connected":false}"#.utf8)}
+            if ProcessInfo.processInfo.arguments.contains("--qa-pip-draft") {
+                let draft=Data(#"{"id":"qa-draft","pip_id":"qa-pip","name":"Lumi","description":"Lavender traveler with a green scarf","status":"preview_ready","progress":25,"preview_sha":"qa-preview","has_reference":true}"#.utf8)
+                if path=="/v1/pip-jobs",body==nil {return Data("[".utf8)+draft+Data("]".utf8)}
+                if path=="/v1/pip-jobs/qa-draft",body==nil {return draft}
+                if path=="/v1/pip-jobs/qa-draft/preview.png" || path=="/v1/pip-jobs/qa-draft/reference.png" {return UIImage(named:"Pixel0_0")!.pngData()!}
+            }
             if path=="/v1/pip-jobs" && body==nil{return Data("[]".utf8)};throw URLError(.notConnectedToInternet)}
         var request=URLRequest(url:try url(path));request.timeoutInterval=timeout
         if auth {request.setValue("Bearer "+token,forHTTPHeaderField:"Authorization")}
@@ -112,6 +121,28 @@ enum SecureStore {
         sessions=snap.sessions;messages=snap.messages;active=snap.active_session;device=snap.device;pips=snap.pips;providers=snap.providers;preferences=snap.settings;cursor=snap.cursor
         if let id=snap.selected_pip,let p=pips.first(where:{$0.id==id}){choose(p)}
         for p in pips where p.asset_id != nil {await loadArt(p)}
+        await refreshPipJobs()
+    }
+    private var pipSeenKey:String {"wappai.pip.jobStates."+server}
+    func recordPipJob(_ job:PipJob,announce:Bool=true) {
+        var seen=UserDefaults.standard.dictionary(forKey:pipSeenKey) as? [String:String] ?? [:]
+        let completionKey=job.id+":"+job.status
+        if announce && seen[completionKey]==nil && ["preview_ready","ready"].contains(job.status) {
+            pipNotice=job.status=="preview_ready" ? "התצוגה המקדימה של \(job.name) מוכנה לאישור":"ה־Pip \(job.name) והאנימציות שלו מוכנים בגלריה"
+        }
+        if ["preview_ready","ready"].contains(job.status) {seen[completionKey]="notified"}
+        seen[job.id]=job.status
+        if seen.count>256 {let keep=Set(pipJobs.map(\.id)+[job.id]);seen=seen.filter{keep.contains(String($0.key.split(separator:":")[0]))}}
+        UserDefaults.standard.set(seen,forKey:pipSeenKey)
+    }
+    func refreshPipJobs() async {
+        do {
+            let list=try JSONDecoder().decode([PipJob].self,from:await call("/v1/pip-jobs"))
+            let initialized=UserDefaults.standard.dictionary(forKey:pipSeenKey) != nil
+            pipJobs=list
+            for job in list.reversed() {recordPipJob(job,announce:initialized)}
+            if !initialized && list.isEmpty {UserDefaults.standard.set([String:String](),forKey:pipSeenKey)}
+        }catch{ /* Preserve loaded gallery while offline. */ }
     }
     func start() {
         guard paired && !uiTesting else{return}; stop()
@@ -151,6 +182,7 @@ enum SecureStore {
                             else {messages.append(.init(id:id,session_id:active,role:type=="heard" ? "user":"assistant",text:text,created:Date().timeIntervalSince1970))}
                             if type=="say" {state="speaking"}
                         }
+                        if type=="pip.job.completed" {await refreshPipJobs();continue}
                         if type=="pips.updated" {try await refresh();continue}
                         if type=="pip.selected" {let id=obj["pip_id"] as? String ?? ["pip","nori","orbit"][min(2,max(0,obj["pip"] as? Int ?? 0))];if let p=pips.first(where:{$0.id==id}){choose(p);await loadArt(p)}}
                         if type=="heard",let index=sessions.firstIndex(where:{$0.id==active && $0.title=="שיחה חדשה"}) {sessions[index].title=String((obj["text"] as? String ?? "שיחה חדשה").prefix(60))}

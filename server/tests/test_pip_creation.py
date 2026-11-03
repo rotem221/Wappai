@@ -278,3 +278,61 @@ def test_invalid_reference_never_creates_job(studio,monkeypatch,data):
     response=c.post('/v1/pip-jobs',headers=h,json={'reference':base64.b64encode(data).decode()})
     assert response.status_code==422 and 'התמונה' in response.json()['detail']
     assert s.jobs()==before and not calls
+
+
+def test_image_description_and_reference_survive_preview_revision(studio,monkeypatch):
+    s,c,h=studio;monkeypatch.setattr(s,'launch',lambda *args:None)
+    source=base64.b64encode(sheet()).decode();brief='Keep the green scarf and curious eyes'
+    first=c.post('/v1/pip-jobs',headers=h,json={'reference':source,'description':brief}).json()
+    assert first['description']==brief and first['has_reference']
+    url='/v1/pip-jobs/'+first['id']+'/reference.png'
+    assert c.get(url).status_code==401
+    reference=c.get(url,headers=h).content;assert reference.startswith(b'\x89PNG')
+    first.update(status='preview_ready',preview_sha='approved-old');s.save(first)
+    revised=c.post('/v1/pip-jobs',headers=h,json={'reference':source,'description':brief+' with boots','replaces_job':first['id']}).json()
+    assert revised['pip_id']==first['pip_id'] and revised['description']==brief+' with boots'
+    assert s.get(first['id'])['status']=='superseded'
+    assert c.post('/v1/pip-jobs/'+first['id']+'/apply',headers=h,json={'preview_sha':'approved-old'}).status_code==409
+    assert c.get('/v1/pip-jobs/'+revised['id']+'/reference.png',headers=h).content==reference
+    assert c.post('/v1/pip-jobs',headers=h,json={'reference':source,'replaces_job':revised['id']}).status_code==409
+
+
+def test_published_edit_loads_original_reference_not_generated_pose(studio,monkeypatch):
+    s,c,h=studio;j=make_job(s);reference=pip_assets.reference_image(sheet())
+    (s.root/j['id']/'reference.png').write_bytes(reference)
+    async def image(*args):return sheet()
+    s.image=image;asyncio.run(s.run(j['id'],'build'))
+    p=s.pip(j['pip_id']);url='/v1/pips/'+p['id']+'/reference.png'
+    assert c.get(url).status_code==401
+    assert c.get(url,headers=h).content==reference
+    assert c.get('/v1/pips/pip/reference.png',headers=h).status_code==403
+    monkeypatch.setattr(s,'launch',lambda *args:None)
+    edit=c.post('/v1/pip-jobs',headers=h,json={'name':p['name'],'description':p['description'],'target':p['id']}).json()
+    assert (s.root/edit['id']/'reference.png').read_bytes()==reference
+    removed=c.post('/v1/pip-jobs',headers=h,json={'name':p['name'],'description':'Completely new drawing','target':p['id'],'discard_reference':True}).json()
+    assert not removed['has_reference'] and not (s.root/removed['id']/'reference.png').exists()
+
+
+def test_completed_preview_and_full_pack_emit_notifications_only_on_success(studio,monkeypatch,tmp_path):
+    from app import notifications
+    svc=notifications.Notifications(tmp_path/'pip-push.sqlite')
+    svc.register('installation-123456','ab'*32,'sandbox',True,True,True)
+    monkeypatch.setattr(notifications,'service',svc)
+    s,c,h=studio;j=make_job(s,'preview_generating');events=[]
+    async def emit(event):events.append(event)
+    async def image(*args):return sheet()
+    s.emit=emit;s.image=image
+    asyncio.run(s.run(j['id'],'preview'))
+    assert events[-1]['status']=='preview_ready'
+    asyncio.run(s.run(j['id'],'build'))
+    assert events[-1]['type']=='pip.job.completed' and events[-1]['status']=='ready'
+    asyncio.run(s.completed(s.get(j['id'])))
+    assert svc.db.execute('SELECT COUNT(*) FROM outbox').fetchone()[0]==2
+    payloads=[json.loads(row[0]) for row in svc.db.execute('SELECT body FROM outbox')]
+    assert all(p['kind']=='pips' and p['reference']==j['id'] for p in payloads)
+    assert all('description' not in p and 'name' not in p for p in payloads)
+    failed=make_job(s,'preview_generating')
+    async def broken(*args):raise RuntimeError('Generation failed')
+    s.image=broken;asyncio.run(s.run(failed['id'],'preview'))
+    assert s.get(failed['id'])['status']=='failed'
+    assert svc.db.execute('SELECT COUNT(*) FROM outbox').fetchone()[0]==2

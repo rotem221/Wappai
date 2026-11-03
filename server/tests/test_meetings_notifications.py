@@ -164,3 +164,23 @@ def test_apns_signed_request_and_environment(tmp_path,monkeypatch):
     monkeypatch.setattr(httpx,'AsyncClient',Client);asyncio.run(svc.drain())
     assert len(calls)==1 and svc.db.execute('SELECT state FROM outbox').fetchone()[0]=='sent'
     asyncio.run(svc.drain());assert len(calls)==1
+
+
+def test_pip_notification_migrates_existing_preferences_and_opt_out(tmp_path,monkeypatch):
+    import sqlite3
+    path=tmp_path/'legacy-push.sqlite'
+    with sqlite3.connect(path) as db:
+        db.execute('CREATE TABLE devices(id TEXT PRIMARY KEY,token TEXT,environment TEXT,timers INTEGER,meetings INTEGER,updated REAL)')
+    svc=Notifications(path)
+    svc.register('installation-123456','ab'*32,'sandbox',True,True)
+    svc.enqueue('pips','preview','job',stage='preview_ready')
+    assert svc.db.execute('SELECT COUNT(*) FROM outbox').fetchone()[0]==0
+    svc.register('installation-123456','ab'*32,'sandbox',True,True,True)
+    svc.enqueue('pips','preview','job',stage='preview_ready')
+    svc.enqueue('pips','preview','job',stage='preview_ready')
+    assert svc.db.execute('SELECT COUNT(*) FROM outbox').fetchone()[0]==1
+    svc.register('installation-123456','ab'*32,'sandbox',True,True,False)
+    monkeypatch.setattr(svc,'configured',lambda:True)
+    asyncio.run(svc.drain())
+    assert svc.db.execute('SELECT state FROM outbox').fetchone()[0]=='cancelled'
+    with pytest.raises(ValueError):svc.register('installation-123456','ab'*32,'sandbox',True,True,'yes')

@@ -21,6 +21,8 @@ class Notifications:
         self.db.executescript('''PRAGMA journal_mode=WAL;
         CREATE TABLE IF NOT EXISTS devices(id TEXT PRIMARY KEY, token TEXT, environment TEXT, timers INTEGER, meetings INTEGER, updated REAL);
         CREATE TABLE IF NOT EXISTS outbox(id TEXT PRIMARY KEY, device TEXT, body TEXT, attempts INTEGER DEFAULT 0, due REAL, expires REAL, state TEXT DEFAULT 'pending');''')
+        if 'pips' not in {r[1] for r in self.db.execute('PRAGMA table_info(devices)')}:
+            self.db.execute('ALTER TABLE devices ADD COLUMN pips INTEGER NOT NULL DEFAULT 0')
         self.db.commit()
         for suffix in ("-wal","-shm"):
             sidecar=Path(str(path)+suffix)
@@ -29,17 +31,19 @@ class Notifications:
     def configured(self):
         return all(os.getenv(k) for k in ('APNS_KEY_ID', 'APNS_TEAM_ID', 'APNS_KEY_FILE', 'APNS_TOPIC')) and Path(os.getenv('APNS_KEY_FILE', '')).is_file()
 
-    def register(self, installation, token, environment, timers, meetings):
+    def register(self, installation, token, environment, timers, meetings, pips=False):
         if not re.fullmatch(r'[a-zA-Z0-9-]{16,80}', installation) or not re.fullmatch(r'[a-fA-F0-9]{32,256}', token):
             raise ValueError('Invalid installation or APNs token')
-        if environment not in ('sandbox', 'production') or type(timers) is not bool or type(meetings) is not bool:
+        if environment not in ('sandbox', 'production') or type(timers) is not bool or type(meetings) is not bool or type(pips) is not bool:
             raise ValueError('Invalid notification preferences')
-        self.db.execute('INSERT INTO devices VALUES (?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET token=excluded.token,environment=excluded.environment,timers=excluded.timers,meetings=excluded.meetings,updated=excluded.updated', (installation, token.lower(), environment, timers, meetings, time.time()))
+        self.db.execute('INSERT INTO devices(id,token,environment,timers,meetings,updated,pips) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET token=excluded.token,environment=excluded.environment,timers=excluded.timers,meetings=excluded.meetings,updated=excluded.updated,pips=excluded.pips', (installation, token.lower(), environment, timers, meetings, time.time(), pips))
         self.db.commit()
 
-    def enqueue(self, kind, event_id, reference=''):
-        if kind not in ('timers', 'meetings'): raise ValueError('Unknown notification kind')
+    def enqueue(self, kind, event_id, reference='', stage=''):
+        if kind not in ('timers', 'meetings', 'pips'): raise ValueError('Unknown notification kind')
         title, body = ('הטיימר הסתיים', 'הטיימר של Wappai הגיע לסיומו.') if kind == 'timers' else ('סיכום הפגישה מוכן', 'התמלול והסיכום זמינים בפגישות שלך.')
+        if kind=='pips':
+            title,body=('התצוגה המקדימה מוכנה','אפשר לפתוח את הגלריה ולאשר את עיצוב ה־Pip.') if stage=='preview_ready' else ('ה־Pip החדש מוכן','הדמות והאנימציות שלה מוכנות בגלריה.')
         payload = {'aps': {'alert': {'title': title, 'body': body}, 'sound': 'default', 'thread-id': 'wappai-'+kind}, 'kind': kind, 'reference': reference[:80]}
         now = time.time()
         for device in self.db.execute('SELECT * FROM devices WHERE '+kind+'=1'):
@@ -96,7 +100,7 @@ class Notifications:
         @app.post('/v1/notifications/register')
         async def register(request: Request):
             require(request); d=await request.json()
-            try: self.register(d.get('installation',''),d.get('token',''),d.get('environment',''),d.get('timers',True),d.get('meetings',True))
+            try: self.register(d.get('installation',''),d.get('token',''),d.get('environment',''),d.get('timers',True),d.get('meetings',True),d.get('pips',False))
             except (ValueError, TypeError) as e: raise HTTPException(422,str(e))
             return {'configured':self.configured()}
 
