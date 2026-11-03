@@ -1,0 +1,793 @@
+{
+  "_doc": "Character definition. Single source of truth: tools/gen_face.py turns it into firmware/src/face/emotions.gen.h, and the web simulator (server/sim) reads it directly. Units are pixels in face space (screen centre = 0,0; y grows down). 'eye' applies to both eyes, 'eyeL'/'eyeR' override one side (L = left on screen). Same for 'brow'/'browL'/'browR'. Lid angle lidTA > 0 lowers the inner corner (angry), < 0 raises it (sad). rot > 0 lifts the outer corner. Brow ang > 0 = inner end down (angry). mcurve > 0 = smile. 'extends' copies another emotion first.",
+  "name": "Piko",
+  "color": "#62F2DF",
+  "defaults": {
+    "eye": {
+      "dx": 80,
+      "y": -18,
+      "w": 82,
+      "h": 98,
+      "r": 41,
+      "rot": 0,
+      "lidT": 0,
+      "lidTA": 0,
+      "lidB": 0,
+      "hl": 0.9,
+      "shape": "round"
+    },
+    "brow": {
+      "a": 0,
+      "y": 20,
+      "dx": 0,
+      "w": 56,
+      "th": 10,
+      "ang": 0,
+      "curve": 0
+    },
+    "mouth": {
+      "dx": 0,
+      "y": 92,
+      "w": 40,
+      "curve": 9,
+      "open": 0,
+      "th": 9,
+      "rot": 0,
+      "shape": "curve"
+    },
+    "face": {
+      "cheek": 0,
+      "dy": 0,
+      "scale": 1.2,
+      "rot": 0,
+      "glow": 0.55,
+      "anim": "none",
+      "animAmp": 1,
+      "fx": []
+    }
+  },
+  "emotions": {
+    "idle": {},
+    "happy": {
+      "eye": {
+        "h": 88,
+        "lidB": 0.3
+      },
+      "mouth": {
+        "w": 58,
+        "curve": 16,
+        "open": 6
+      },
+      "face": {
+        "cheek": 0.55,
+        "anim": "sway",
+        "animAmp": 0.5
+      }
+    },
+    "joy": {
+      "eye": {
+        "shape": "arc_up",
+        "w": 82
+      },
+      "mouth": {
+        "w": 66,
+        "curve": 16,
+        "open": 24
+      },
+      "face": {
+        "cheek": 0.8,
+        "anim": "bounce",
+        "animAmp": 0.8
+      }
+    },
+    "love": {
+      "color": "#FF7AB6",
+      "eye": {
+        "shape": "heart",
+        "w": 84
+      },
+      "mouth": {
+        "w": 46,
+        "curve": 12,
+        "open": 4
+      },
+      "face": {
+        "cheek": 0.9,
+        "anim": "sway",
+        "animAmp": 0.7,
+        "fx": [
+          "hearts"
+        ]
+      }
+    },
+    "excited": {
+      "eye": {
+        "w": 86,
+        "h": 106,
+        "r": 38,
+        "hl": 1
+      },
+      "mouth": {
+        "w": 52,
+        "curve": 14,
+        "open": 18
+      },
+      "face": {
+        "anim": "bounce",
+        "animAmp": 1,
+        "fx": [
+          "sparkles"
+        ]
+      }
+    },
+    "starstruck": {
+      "color": "#FFD84D",
+      "eye": {
+        "shape": "star",
+        "w": 90
+      },
+      "mouth": {
+        "shape": "o",
+        "w": 30,
+        "open": 22
+      },
+      "face": {
+        "anim": "bounce",
+        "animAmp": 0.5,
+        "fx": [
+          "sparkles"
+        ]
+      }
+    },
+    "proud": {
+      "eye": {
+        "y": -24,
+        "h": 84,
+        "lidT": 0.26,
+        "lidTA": -4,
+        "lidB": 0.2
+      },
+      "mouth": {
+        "w": 46,
+        "curve": 11,
+        "dx": 6,
+        "rot": 6
+      },
+      "face": {
+        "dy": -8,
+        "cheek": 0.3
+      }
+    },
+    "curious": {
+      "eyeL": {
+        "h": 84,
+        "lidT": 0.14
+      },
+      "eyeR": {
+        "h": 110,
+        "w": 84
+      },
+      "browR": {
+        "a": 0.9,
+        "y": 26,
+        "ang": -8
+      },
+      "mouth": {
+        "shape": "o",
+        "w": 16,
+        "open": 12,
+        "dx": 8
+      },
+      "face": {
+        "rot": 8
+      }
+    },
+    "thinking": {
+      "color": "#7FC4FF",
+      "eye": {
+        "lidT": 0.18,
+        "lidB": 0.08
+      },
+      "eyeR": {
+        "h": 92
+      },
+      "browL": {
+        "a": 0.8,
+        "y": 24,
+        "ang": -10
+      },
+      "mouth": {
+        "w": 28,
+        "curve": -2,
+        "dx": 14,
+        "rot": -6
+      },
+      "face": {
+        "fx": [
+          "dots"
+        ]
+      }
+    },
+    "confused": {
+      "eyeL": {
+        "h": 78,
+        "lidT": 0.24,
+        "lidTA": 10
+      },
+      "eyeR": {
+        "h": 106
+      },
+      "browL": {
+        "a": 0.8,
+        "y": 16,
+        "ang": 10
+      },
+      "browR": {
+        "a": 0.8,
+        "y": 28,
+        "ang": -12
+      },
+      "mouth": {
+        "shape": "wave",
+        "w": 46,
+        "curve": 4
+      },
+      "face": {
+        "rot": -8,
+        "fx": [
+          "question"
+        ]
+      }
+    },
+    "surprised": {
+      "eye": {
+        "w": 84,
+        "h": 112,
+        "r": 42,
+        "hl": 1
+      },
+      "brow": {
+        "a": 0.9,
+        "y": 30
+      },
+      "mouth": {
+        "shape": "o",
+        "w": 28,
+        "open": 28
+      },
+      "face": {
+        "scale": 1.24
+      }
+    },
+    "shocked": {
+      "eye": {
+        "w": 92,
+        "h": 120,
+        "r": 46,
+        "hl": 1
+      },
+      "brow": {
+        "a": 1,
+        "y": 34,
+        "ang": -6
+      },
+      "mouth": {
+        "shape": "o",
+        "w": 40,
+        "open": 46
+      },
+      "face": {
+        "scale": 1.26,
+        "fx": [
+          "exclaim"
+        ]
+      }
+    },
+    "scared": {
+      "color": "#9EE7FF",
+      "eye": {
+        "w": 70,
+        "h": 100,
+        "lidT": 0.1,
+        "lidTA": -16
+      },
+      "brow": {
+        "a": 0.9,
+        "y": 20,
+        "ang": -20,
+        "curve": 3
+      },
+      "mouth": {
+        "shape": "wave",
+        "w": 52,
+        "curve": 5
+      },
+      "face": {
+        "anim": "tremble",
+        "animAmp": 1,
+        "fx": [
+          "sweat"
+        ],
+        "dy": 6
+      }
+    },
+    "nervous": {
+      "eye": {
+        "w": 72,
+        "h": 94,
+        "lidTA": -8
+      },
+      "brow": {
+        "a": 0.6,
+        "y": 18,
+        "ang": -12
+      },
+      "mouth": {
+        "shape": "wave",
+        "w": 48,
+        "curve": 3
+      },
+      "face": {
+        "anim": "tremble",
+        "animAmp": 0.4,
+        "fx": [
+          "sweat"
+        ]
+      }
+    },
+    "sad": {
+      "color": "#7FA8FF",
+      "eye": {
+        "h": 84,
+        "lidT": 0.32,
+        "lidTA": -16,
+        "rot": -5
+      },
+      "brow": {
+        "a": 0.8,
+        "y": 18,
+        "ang": -18
+      },
+      "mouth": {
+        "w": 42,
+        "curve": -12
+      },
+      "face": {
+        "dy": 10,
+        "glow": 0.35
+      }
+    },
+    "crying": {
+      "extends": "sad",
+      "eye": {
+        "shape": "squint",
+        "w": 80
+      },
+      "mouth": {
+        "w": 50,
+        "curve": -12,
+        "open": 16
+      },
+      "face": {
+        "fx": [
+          "tears"
+        ],
+        "anim": "tremble",
+        "animAmp": 0.35
+      }
+    },
+    "angry": {
+      "color": "#FF6A4D",
+      "eye": {
+        "h": 90,
+        "lidT": 0.36,
+        "lidTA": 24
+      },
+      "brow": {
+        "a": 1,
+        "y": 10,
+        "ang": 26,
+        "th": 11
+      },
+      "mouth": {
+        "w": 46,
+        "curve": -10
+      },
+      "face": {
+        "anim": "tremble",
+        "animAmp": 0.35,
+        "fx": [
+          "anger"
+        ]
+      }
+    },
+    "furious": {
+      "extends": "angry",
+      "color": "#FF3B30",
+      "eye": {
+        "lidT": 0.42,
+        "lidTA": 30
+      },
+      "mouth": {
+        "w": 54,
+        "curve": -6,
+        "open": 18
+      },
+      "face": {
+        "anim": "tremble",
+        "animAmp": 1,
+        "fx": [
+          "anger",
+          "steam"
+        ],
+        "glow": 0.8
+      }
+    },
+    "annoyed": {
+      "eye": {
+        "lidT": 0.45,
+        "lidTA": 6
+      },
+      "brow": {
+        "a": 0.7,
+        "y": 8,
+        "ang": 8
+      },
+      "mouth": {
+        "w": 34,
+        "curve": -2,
+        "dx": 10,
+        "rot": -4
+      }
+    },
+    "skeptical": {
+      "eyeL": {
+        "lidT": 0.45,
+        "lidTA": 4
+      },
+      "eyeR": {
+        "h": 104
+      },
+      "browL": {
+        "a": 0.9,
+        "y": 8,
+        "ang": 10
+      },
+      "browR": {
+        "a": 0.9,
+        "y": 32,
+        "ang": -10
+      },
+      "mouth": {
+        "w": 34,
+        "curve": -3,
+        "dx": 10,
+        "rot": -10
+      }
+    },
+    "bored": {
+      "eye": {
+        "lidT": 0.5,
+        "lidB": 0.04
+      },
+      "mouth": {
+        "w": 30,
+        "curve": 0
+      },
+      "face": {
+        "anim": "float",
+        "animAmp": 0.5,
+        "dy": 6
+      }
+    },
+    "sleepy": {
+      "color": "#B49CFF",
+      "eye": {
+        "lidT": 0.62,
+        "lidTA": -4
+      },
+      "mouth": {
+        "shape": "o",
+        "w": 14,
+        "open": 8
+      },
+      "face": {
+        "anim": "float",
+        "animAmp": 0.7,
+        "glow": 0.35,
+        "dy": 8
+      }
+    },
+    "sleeping": {
+      "color": "#9C86F0",
+      "eye": {
+        "shape": "arc_down",
+        "w": 74
+      },
+      "mouth": {
+        "shape": "o",
+        "w": 14,
+        "open": 6
+      },
+      "face": {
+        "anim": "float",
+        "animAmp": 1,
+        "fx": [
+          "zzz"
+        ],
+        "glow": 0.25,
+        "dy": 10
+      }
+    },
+    "dizzy": {
+      "eye": {
+        "shape": "spiral",
+        "w": 84
+      },
+      "mouth": {
+        "shape": "wave",
+        "w": 48,
+        "curve": 5
+      },
+      "face": {
+        "anim": "wobble",
+        "animAmp": 1,
+        "fx": [
+          "sparkles"
+        ]
+      }
+    },
+    "wink": {
+      "eyeL": {
+        "shape": "arc_up"
+      },
+      "eyeR": {
+        "lidB": 0.25
+      },
+      "mouth": {
+        "w": 50,
+        "curve": 14,
+        "open": 4,
+        "dx": 8,
+        "rot": 6
+      },
+      "face": {
+        "cheek": 0.4
+      }
+    },
+    "mischievous": {
+      "color": "#B98CFF",
+      "eye": {
+        "lidT": 0.3,
+        "lidTA": 16,
+        "lidB": 0.22
+      },
+      "brow": {
+        "a": 0.8,
+        "y": 12,
+        "ang": 16
+      },
+      "mouth": {
+        "w": 44,
+        "curve": 12,
+        "dx": 16,
+        "rot": 12
+      },
+      "face": {
+        "rot": -4
+      }
+    },
+    "shy": {
+      "eye": {
+        "h": 86,
+        "lidB": 0.3,
+        "lidT": 0.1
+      },
+      "mouth": {
+        "shape": "wave",
+        "w": 22,
+        "curve": 2
+      },
+      "face": {
+        "cheek": 1,
+        "rot": 6,
+        "dy": 6,
+        "fx": [
+          "blush"
+        ]
+      }
+    },
+    "kiss": {
+      "eye": {
+        "shape": "arc_up"
+      },
+      "mouth": {
+        "shape": "o",
+        "w": 14,
+        "open": 12,
+        "dx": 6
+      },
+      "face": {
+        "cheek": 0.8,
+        "fx": [
+          "hearts"
+        ]
+      }
+    },
+    "singing": {
+      "eye": {
+        "shape": "arc_up"
+      },
+      "mouth": {
+        "shape": "o",
+        "w": 26,
+        "open": 18
+      },
+      "face": {
+        "anim": "sway",
+        "animAmp": 1,
+        "fx": [
+          "notes"
+        ],
+        "cheek": 0.4
+      }
+    },
+    "relieved": {
+      "eye": {
+        "shape": "arc_down",
+        "w": 78
+      },
+      "mouth": {
+        "w": 46,
+        "curve": 12
+      },
+      "face": {
+        "cheek": 0.4,
+        "dy": 4
+      }
+    },
+    "determined": {
+      "eye": {
+        "lidT": 0.24,
+        "lidTA": 18
+      },
+      "brow": {
+        "a": 0.9,
+        "y": 10,
+        "ang": 20
+      },
+      "mouth": {
+        "w": 40,
+        "curve": -2
+      },
+      "face": {
+        "glow": 0.75
+      }
+    },
+    "listening": {
+      "eye": {
+        "w": 82,
+        "h": 104,
+        "hl": 1
+      },
+      "mouth": {
+        "w": 26,
+        "curve": 4
+      },
+      "face": {
+        "anim": "lean",
+        "animAmp": 1
+      }
+    },
+    "speaking": {
+      "mouth": {
+        "w": 46,
+        "curve": 6,
+        "open": 2
+      }
+    },
+    "working": {
+      "eye": {
+        "lidT": 0.22,
+        "lidTA": 8
+      },
+      "brow": {
+        "a": 0.6,
+        "y": 14,
+        "ang": 12
+      },
+      "mouth": {
+        "w": 30,
+        "curve": 0,
+        "dx": -6
+      },
+      "face": {
+        "fx": [
+          "dots"
+        ]
+      }
+    },
+    "success": {
+      "eye": {
+        "shape": "arc_up"
+      },
+      "mouth": {
+        "w": 56,
+        "curve": 16,
+        "open": 10
+      },
+      "face": {
+        "cheek": 0.5,
+        "anim": "bounce",
+        "animAmp": 0.5,
+        "fx": [
+          "sparkles"
+        ]
+      }
+    },
+    "error": {
+      "color": "#FF4D4D",
+      "eye": {
+        "shape": "x",
+        "w": 74
+      },
+      "mouth": {
+        "shape": "wave",
+        "w": 44,
+        "curve": 4
+      },
+      "face": {
+        "glow": 0.6
+      }
+    },
+    "disconnected": {
+      "color": "#6B7A8A",
+      "eye": {
+        "shape": "x",
+        "w": 70
+      },
+      "mouth": {
+        "w": 30,
+        "curve": -2
+      },
+      "face": {
+        "glow": 0.15,
+        "dy": 6
+      }
+    },
+    "low_battery": {
+      "color": "#FFB13B",
+      "eye": {
+        "lidT": 0.55,
+        "rot": -6
+      },
+      "mouth": {
+        "shape": "wave",
+        "w": 34,
+        "curve": 3
+      },
+      "face": {
+        "fx": [
+          "sweat"
+        ],
+        "dy": 10,
+        "glow": 0.3
+      }
+    },
+    "yawn": {
+      "color": "#B49CFF",
+      "eye": {
+        "shape": "squint",
+        "w": 70
+      },
+      "mouth": {
+        "shape": "o",
+        "w": 40,
+        "open": 44
+      },
+      "face": {
+        "dy": 4
+      }
+    }
+  }
+}

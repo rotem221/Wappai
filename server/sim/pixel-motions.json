@@ -1,0 +1,555 @@
+{
+  "version": 1,
+  "size": 96,
+  "columns": 4,
+  "rows": 4,
+  "characters": [
+    {
+      "id": 0,
+      "name": "Pip",
+      "source": "source/pip.png",
+      "expressionsSource": "source/expressions.png",
+      "expressionRow": 0,
+      "expressionRows": 3,
+      "hue": 148,
+      "dizzyEyes": [
+        [
+          37,
+          39,
+          5.5,
+          7.5
+        ],
+        [
+          58,
+          39,
+          5.5,
+          7.5
+        ]
+      ]
+    },
+    {
+      "id": 1,
+      "name": "Nori",
+      "source": "source/nori.png",
+      "expressionsSource": "source/expressions.png",
+      "expressionRow": 1,
+      "expressionRows": 3,
+      "hue": 28,
+      "dizzyEyes": [
+        [
+          32.5,
+          44,
+          5,
+          7.5
+        ],
+        [
+          51.5,
+          44.5,
+          5,
+          7
+        ]
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Orbit",
+      "source": "source/orbit.png",
+      "expressionsSource": "source/expressions.png",
+      "expressionRow": 2,
+      "expressionRows": 3,
+      "hue": 204,
+      "dizzyEyes": [
+        [
+          35,
+          39,
+          5.5,
+          7
+        ],
+        [
+          56,
+          39,
+          5.5,
+          7
+        ]
+      ]
+    }
+  ],
+  "poses": [
+    "idle",
+    "blink",
+    "listen_a",
+    "listen_b",
+    "think_a",
+    "think_b",
+    "speak_a",
+    "speak_b",
+    "happy_a",
+    "happy_b",
+    "sleep_a",
+    "sleep_b",
+    "surprise",
+    "sad",
+    "wave_a",
+    "wave_b",
+    "angry",
+    "wink",
+    "love",
+    "cry",
+    "confused",
+    "proud",
+    "scared",
+    "yawn"
+  ],
+  "motions": {
+    "idle": [
+      {
+        "pose": 0,
+        "ms": 3500
+      },
+      {
+        "pose": 1,
+        "ms": 130
+      },
+      {
+        "pose": 0,
+        "ms": 1600
+      }
+    ],
+    "listening": [
+      {
+        "pose": 2,
+        "ms": 900
+      },
+      {
+        "pose": 3,
+        "ms": 650
+      }
+    ],
+    "thinking": [
+      {
+        "pose": 4,
+        "ms": 1100
+      },
+      {
+        "pose": 5,
+        "ms": 900
+      }
+    ],
+    "speaking": [
+      {
+        "pose": 6,
+        "ms": 170
+      },
+      {
+        "pose": 7,
+        "ms": 140
+      },
+      {
+        "pose": 6,
+        "ms": 200
+      },
+      {
+        "pose": 7,
+        "ms": 220
+      }
+    ],
+    "happy": [
+      {
+        "pose": 8,
+        "ms": 550
+      },
+      {
+        "pose": 9,
+        "ms": 350
+      }
+    ],
+    "sleeping": [
+      {
+        "pose": 10,
+        "ms": 1700
+      },
+      {
+        "pose": 11,
+        "ms": 2200
+      }
+    ],
+    "surprised": [
+      {
+        "pose": 12,
+        "ms": 1500
+      }
+    ],
+    "sad": [
+      {
+        "pose": 13,
+        "ms": 1800
+      },
+      {
+        "pose": 1,
+        "ms": 130
+      }
+    ],
+    "wave": [
+      {
+        "pose": 14,
+        "ms": 300
+      },
+      {
+        "pose": 15,
+        "ms": 300
+      },
+      {
+        "pose": 14,
+        "ms": 300
+      },
+      {
+        "pose": 15,
+        "ms": 300
+      },
+      {
+        "pose": 0,
+        "ms": 900
+      }
+    ],
+    "curious": [
+      {
+        "pose": 2,
+        "ms": 900
+      },
+      {
+        "pose": 3,
+        "ms": 650
+      }
+    ],
+    "excited": [
+      {
+        "pose": 8,
+        "ms": 550
+      },
+      {
+        "pose": 9,
+        "ms": 350
+      }
+    ],
+    "love": [
+      {
+        "pose": 18,
+        "ms": 1600
+      },
+      {
+        "pose": 18,
+        "ms": 350
+      }
+    ],
+    "proud": [
+      {
+        "pose": 21,
+        "ms": 1600
+      },
+      {
+        "pose": 21,
+        "ms": 350
+      }
+    ],
+    "confused": [
+      {
+        "pose": 20,
+        "ms": 1600
+      },
+      {
+        "pose": 20,
+        "ms": 350
+      }
+    ],
+    "worried": [
+      {
+        "pose": 19,
+        "ms": 1600
+      },
+      {
+        "pose": 19,
+        "ms": 350
+      }
+    ],
+    "crying": [
+      {
+        "pose": 19,
+        "ms": 1600
+      },
+      {
+        "pose": 19,
+        "ms": 350
+      }
+    ],
+    "scared": [
+      {
+        "pose": 22,
+        "ms": 1600
+      },
+      {
+        "pose": 22,
+        "ms": 350
+      }
+    ],
+    "angry": [
+      {
+        "pose": 16,
+        "ms": 1600
+      },
+      {
+        "pose": 16,
+        "ms": 350
+      }
+    ],
+    "furious": [
+      {
+        "pose": 16,
+        "ms": 1600
+      },
+      {
+        "pose": 16,
+        "ms": 350
+      }
+    ],
+    "annoyed": [
+      {
+        "pose": 16,
+        "ms": 1600
+      },
+      {
+        "pose": 16,
+        "ms": 350
+      }
+    ],
+    "skeptical": [
+      {
+        "pose": 20,
+        "ms": 1600
+      },
+      {
+        "pose": 20,
+        "ms": 350
+      }
+    ],
+    "bored": [
+      {
+        "pose": 10,
+        "ms": 1700
+      },
+      {
+        "pose": 11,
+        "ms": 2200
+      }
+    ],
+    "sleepy": [
+      {
+        "pose": 10,
+        "ms": 1700
+      },
+      {
+        "pose": 11,
+        "ms": 2200
+      }
+    ],
+    "dizzy": [
+      {
+        "pose": 12,
+        "ms": 1500
+      }
+    ],
+    "wink": [
+      {
+        "pose": 17,
+        "ms": 1600
+      },
+      {
+        "pose": 0,
+        "ms": 350
+      }
+    ],
+    "mischievous": [
+      {
+        "pose": 17,
+        "ms": 1600
+      },
+      {
+        "pose": 17,
+        "ms": 350
+      }
+    ],
+    "kiss": [
+      {
+        "pose": 18,
+        "ms": 1600
+      },
+      {
+        "pose": 18,
+        "ms": 350
+      }
+    ],
+    "singing": [
+      {
+        "pose": 6,
+        "ms": 170
+      },
+      {
+        "pose": 7,
+        "ms": 140
+      },
+      {
+        "pose": 6,
+        "ms": 200
+      },
+      {
+        "pose": 7,
+        "ms": 220
+      }
+    ],
+    "relieved": [
+      {
+        "pose": 21,
+        "ms": 1600
+      },
+      {
+        "pose": 21,
+        "ms": 350
+      }
+    ],
+    "determined": [
+      {
+        "pose": 21,
+        "ms": 1600
+      },
+      {
+        "pose": 21,
+        "ms": 350
+      }
+    ],
+    "working": [
+      {
+        "pose": 4,
+        "ms": 1100
+      },
+      {
+        "pose": 5,
+        "ms": 900
+      }
+    ],
+    "success": [
+      {
+        "pose": 8,
+        "ms": 550
+      },
+      {
+        "pose": 9,
+        "ms": 350
+      }
+    ],
+    "error": [
+      {
+        "pose": 22,
+        "ms": 1600
+      },
+      {
+        "pose": 22,
+        "ms": 350
+      }
+    ],
+    "disconnected": [
+      {
+        "pose": 4,
+        "ms": 1100
+      },
+      {
+        "pose": 5,
+        "ms": 900
+      }
+    ],
+    "low_battery": [
+      {
+        "pose": 10,
+        "ms": 1700
+      },
+      {
+        "pose": 11,
+        "ms": 2200
+      }
+    ],
+    "yawn": [
+      {
+        "pose": 23,
+        "ms": 1600
+      },
+      {
+        "pose": 0,
+        "ms": 350
+      }
+    ],
+    "embarrassed": [
+      {
+        "pose": 13,
+        "ms": 1800
+      },
+      {
+        "pose": 1,
+        "ms": 130
+      }
+    ],
+    "laughing": [
+      {
+        "pose": 8,
+        "ms": 550
+      },
+      {
+        "pose": 9,
+        "ms": 350
+      }
+    ],
+    "shocked": [
+      {
+        "pose": 12,
+        "ms": 1500
+      }
+    ],
+    "shy": [
+      {
+        "pose": 13,
+        "ms": 1800
+      },
+      {
+        "pose": 1,
+        "ms": 130
+      }
+    ],
+    "nervous": [
+      {
+        "pose": 22,
+        "ms": 1600
+      },
+      {
+        "pose": 22,
+        "ms": 350
+      }
+    ],
+    "joy": [
+      {
+        "pose": 8,
+        "ms": 550
+      },
+      {
+        "pose": 9,
+        "ms": 350
+      }
+    ],
+    "starstruck": [
+      {
+        "pose": 18,
+        "ms": 1600
+      },
+      {
+        "pose": 18,
+        "ms": 350
+      }
+    ]
+  }
+}

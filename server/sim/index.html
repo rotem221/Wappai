@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#f7f9f8" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="referrer" content="no-referrer" />
+    <title>Wappai · המרחב שלך</title>
+    <link rel="icon" href="/sim/wappai-mark.png" />
+    <link rel="apple-touch-icon" href="/sim/wappai-mark.png" />
+    <link rel="stylesheet" href="/sim/wappai.css" />
+    <script type="module" src="/sim/wappai.js"></script>
+  </head>
+  <body>
+    <div class="ambient" aria-hidden="true"></div>
+    <section id="login" class="login" hidden>
+      <img class="brand-mark" src="/sim/wappai-mark.png" alt="" /><span
+        class="wordmark"
+        lang="en"
+        >Wappai</span
+      >
+      <h1>המרחב הקטן שלך.</h1>
+      <p>השיחות, הדמויות וכל מה שחשוב — במקום אחד.</p>
+      <form id="login-form" class="glass login-card">
+        <label for="pair-code">קוד חיבור חד־פעמי</label
+        ><input
+          id="pair-code"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          pattern="[0-9]{6}"
+          maxlength="6"
+          placeholder="000000"
+          required
+          dir="ltr"
+        /><button class="primary">כניסה</button>
+        <p class="hint">אפשר ליצור קוד במסך הצימוד בניהול Wappai.</p>
+        <a href="/admin">כבר מחובר לניהול? מעבר לניהול</a>
+      </form>
+    </section>
+    <div id="workspace" hidden>
+      <button
+        id="drawer-scrim"
+        class="scrim"
+        aria-label="סגירת תפריט השיחות"
+        hidden
+      ></button>
+      <aside id="drawer" class="drawer glass" aria-label="השיחות שלי">
+        <div class="drawer-brand">
+          <img src="/sim/wappai-mark.png" alt="" /><strong lang="en"
+            >Wappai</strong
+          ><button
+            class="icon mobile-only"
+            id="close-drawer"
+            aria-label="סגירת תפריט"
+          >
+            ×
+          </button>
+        </div>
+        <button id="new-chat" class="new-chat">
+          <span class="plus">＋</span> שיחה חדשה
+          <span class="shortcut" aria-hidden="true">⌘ N</span>
+        </button>
+        <label class="search-box"
+          ><span aria-hidden="true">⌕</span
+          ><input
+            id="chat-search"
+            type="search"
+            placeholder="חיפוש בשיחות"
+            aria-label="חיפוש בשיחות"
+        /></label>
+        <h2 class="eyebrow">השיחות שלך</h2>
+        <nav id="sessions" aria-label="רשימת שיחות"></nav>
+        <div class="drawer-bottom">
+          <button data-panel="pips">
+            <span aria-hidden="true">✧</span> הדמויות שלי</button
+          ><button data-panel="settings">
+            <span aria-hidden="true">⚙</span> הגדרות
+          </button>
+          <div class="drawer-foot">
+            <span id="drawer-device">Wappai</span
+            ><a href="/admin">ניהול מתקדם ↗</a>
+          </div>
+        </div>
+      </aside>
+      <main id="chat" class="chat">
+        <header class="chat-header">
+          <button
+            class="icon glass"
+            id="toggle-drawer"
+            aria-label="השיחות שלי"
+            aria-controls="drawer"
+            aria-expanded="true"
+          >
+            <svg viewBox="0 0 24 24">
+              <rect x="3" y="5" width="18" height="14" rx="4" />
+              <path d="M15 5v14m3-9h1m-1 4h1" />
+            </svg>
+          </button>
+          <div class="conversation-heading">
+            <h1 id="chat-title">שיחה חדשה</h1>
+            <p id="connection"><i class="status-dot"></i><span>מתחבר…</span></p>
+          </div>
+          <button class="icon glass" data-panel="settings" aria-label="הגדרות">
+            <svg viewBox="0 0 24 24">
+              <path
+                d="m10 3-1 3-3 1-3 3 2 2-1 3 3 3 3-1 2 3 3-2 3-1 1-4-2-2 1-3-3-3-3 1Z"
+              />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          </button>
+        </header>
+        <div
+          id="messages"
+          class="messages"
+          role="log"
+          aria-label="השיחה"
+          aria-live="polite"
+        ></div>
+        <div id="turn-status" class="turn-status" role="status" hidden></div>
+        <div id="device-badge" class="device-badge glass" hidden></div>
+        <div class="composer-area">
+          <form id="composer" class="composer glass">
+            <button
+              type="button"
+              id="mic"
+              class="icon"
+              aria-label="החזק להקלטה"
+              title="החזק להקלטה"
+            >
+              <svg viewBox="0 0 24 24">
+                <rect x="9" y="2" width="6" height="13" rx="3" />
+                <path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3m-3 0h6" />
+              </svg></button
+            ><textarea
+              id="draft"
+              rows="1"
+              placeholder="מה נעשה היום?"
+              aria-label="הודעה ל־Wappai"
+              maxlength="4000"
+            ></textarea
+            ><button id="send" class="send" aria-label="שליחת הודעה" disabled>
+              ↑
+            </button>
+          </form>
+          <div class="composer-note">
+            <span id="provider-label">Wappai</span
+            ><button id="stop-turn" hidden type="button">עצירת התשובה ■</button
+            ><span>החזק את המיקרופון כדי לדבר</span>
+          </div>
+        </div>
+      </main>
+      <button
+        id="floating-pip"
+        class="floating-pip"
+        aria-label="הדמות שלי — לחיצה לפתיחת הגלריה, לחיצה ארוכה להזזה"
+      >
+        <canvas width="192" height="192" aria-hidden="true"></canvas
+        ><span class="pet-shadow"></span>
+      </button>
+      <div id="pet-menu" class="pet-menu glass" hidden>
+        <button id="hide-pet">הסתרת הדמות</button
+        ><button id="reset-pet">חזרה למיקום המקורי</button
+        ><span>לחיצה ארוכה וגרירה להזזה</span>
+      </div>
+    </div>
+    <dialog id="panel" class="panel glass">
+      <header class="panel-header">
+        <div>
+          <p class="eyebrow" id="panel-kicker">WAPPAI</p>
+          <h2 id="panel-title"></h2>
+        </div>
+        <button class="icon" id="close-panel" aria-label="סגירה">×</button>
+      </header>
+      <div id="panel-body"></div>
+    </dialog>
+    <div id="notice" class="notice glass" role="alert" hidden></div>
+  </body>
+</html>

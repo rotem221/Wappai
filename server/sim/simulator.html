@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wappai · Pips</title>
+<link rel="icon" href="/sim/wappai-mark.png">
+<style>
+  :root { --bg:#0b0d10; --panel:#14181d; --ink:#e8eef2; --muted:#8090a0; --accent:#62f2df; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui, "Rubik", sans-serif; }
+  main { max-width:1100px; margin:0 auto; padding:16px; display:grid; grid-template-columns: minmax(0,1fr) 340px; gap:20px; }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+  .stage { display:flex; flex-direction:column; align-items:center; gap:12px; }
+  .device { position:relative; width:min(90vw, 480px); aspect-ratio:1; border-radius:50%; background:#000;
+            box-shadow: 0 0 0 10px #1c2026, 0 0 0 12px #2a3038, 0 20px 60px #000a; overflow:hidden; }
+  canvas { width:100%; height:100%; display:block; border-radius:50%; }
+  .sub { position:absolute; left:15%; right:15%; bottom:9%; text-align:center; font-size:clamp(13px,2.6vw,19px);
+         color:#dfe8ee; text-shadow:0 0 8px #000; min-height:2.6em; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+  button { background:#1d232b; color:var(--ink); border:1px solid #2c3540; border-radius:999px; padding:6px 12px; cursor:pointer; font:inherit; font-size:13px; }
+  button:hover { border-color:var(--accent); }
+  button.on { background:var(--accent); color:#04201c; }
+  aside { background:var(--panel); border-radius:16px; padding:14px; display:flex; flex-direction:column; gap:12px; min-height:300px; }
+  h2 { font-size:14px; margin:0; color:var(--muted); font-weight:500; }
+  #log { flex:1; overflow:auto; max-height:46vh; display:flex; flex-direction:column; gap:6px; font-size:14px; }
+  .me { align-self:flex-start; background:#22303a; padding:6px 10px; border-radius:12px; }
+  .it { align-self:flex-end; background:#14302c; padding:6px 10px; border-radius:12px; }
+  form { display:flex; gap:6px; }
+  input { flex:1; background:#0e1115; border:1px solid #2c3540; color:var(--ink); border-radius:10px; padding:8px 10px; font:inherit; }
+  .status { font-size:12px; color:var(--muted); }
+  #ptt { width:100%; padding:12px; font-size:15px; border-radius:12px; }
+  #ptt.rec { background:#ff5c5c; color:#fff; }
+</style>
+</head>
+<body>
+<main>
+  <section class="stage">
+    <div class="device"><canvas id="c" width="466" height="466"></canvas><div class="sub" id="sub"></div></div>
+    <div class="row" id="pips"></div>
+    <div class="row" id="emos"></div>
+    <div class="row" id="gests"></div>
+  </section>
+  <aside>
+    <h2>שיחה</h2>
+    <div class="status" id="st">מתחבר…</div>
+    <div id="log"></div>
+    <button id="ptt">החזק לדבר (מיקרופון הדפדפן)</button>
+    <form id="f"><input id="q" placeholder="כתוב ל־Wappai…" autocomplete="off"><button>שלח</button></form>
+  </aside>
+</main>
+<script src="/sim/face.js"></script>
+<script>
+"use strict";
+const token = new URLSearchParams(location.search).get("token") || "";
+const cv = document.getElementById("c"), ctx = cv.getContext("2d"), img = ctx.createImageData(466, 466);
+let face, ring = "none", ringT0 = 0, level = 0, subTimer;
+const sub = document.getElementById("sub"), log = document.getElementById("log"), st = document.getElementById("st");
+
+fetch("/sim/emotions.json").then(r => r.json()).then(async data => {
+  face = new Face(data.emotions);
+  await face.loadArt();
+  ["Pip","Nori","Orbit"].forEach((name,rig)=>{const b=document.createElement("button");b.textContent=name;b.onclick=()=>face.rig=rig;document.getElementById("pips").appendChild(b);});
+  const box = document.getElementById("emos");
+  for (const n of Object.keys(data.emotions)) {
+    const b = document.createElement("button"); b.textContent = n;
+    b.onclick = () => { face.setEmotion(n); [...box.children].forEach(x => x.classList.toggle("on", x === b)); };
+    box.appendChild(b);
+  }
+  const gb = document.getElementById("gests");
+  for (const g of ["blink", "nod", "shake", "jump", "pop", "wiggle", "tilt_left", "tilt_right", "look_left", "look_right"]) {
+    const b = document.createElement("button"); b.textContent = g; b.onclick = () => face.gesture(g); gb.appendChild(b);
+  }
+  let last = performance.now();
+  const loop = (now) => {
+    face.update((now - last) / 1000); last = now;
+    face.talk = level;
+    face.render(img, 233, 233);
+    ctx.putImageData(img, 0, 0);
+    drawRing(now);
+    requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+});
+
+function drawRing(now) {
+  if (ring === "none") return;
+  const t = (now - ringT0) / 1000;
+  ctx.save(); ctx.lineCap = "round"; ctx.lineWidth = 9;
+  ctx.strokeStyle = "rgba(98,242,223,.15)"; ctx.beginPath(); ctx.arc(233, 233, 225, 0, 7); ctx.stroke();
+  if (ring === "rec") {
+    const p = Math.min(t / 30, 1);
+    ctx.strokeStyle = "#62f2df"; ctx.shadowColor = "#62f2df"; ctx.shadowBlur = 10 + micLevel * 30;
+    ctx.beginPath(); ctx.arc(233, 233, 225, -Math.PI / 2, -Math.PI / 2 + p * Math.PI * 2); ctx.stroke();
+  } else if (ring === "think") {
+    const a = t * 4;
+    const g = ctx.createConicGradient(a, 233, 233);
+    g.addColorStop(0, "rgba(127,196,255,0)"); g.addColorStop(0.25, "rgba(127,196,255,1)"); g.addColorStop(0.2501, "rgba(127,196,255,0)");
+    ctx.strokeStyle = g; ctx.beginPath(); ctx.arc(233, 233, 225, 0, 7); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ---- connection
+let ws, audioCtx, playAt = 0, micLevel = 0;
+function connect() {
+  ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws?kind=sim&token=${encodeURIComponent(token)}`);
+  ws.binaryType = "arraybuffer";
+  ws.onopen = () => { st.textContent = "מחובר לשרת"; ws.send(JSON.stringify({ type: "hello", device_id: "sim", fw_version: "web" })); };
+  ws.onclose = (e) => { st.textContent = e.code === 4401 ? "טוקן שגוי (?token=)" : "מנותק, מתחבר שוב…"; setTimeout(connect, 2000); };
+  ws.onmessage = (ev) => {
+    if (typeof ev.data !== "string") return playPcm(ev.data);
+    const m = JSON.parse(ev.data);
+    if (!face) return;
+    if (m.type === "state") {
+      if (m.emotion) face.setEmotion(m.emotion);
+      if (m.gesture) face.gesture(m.gesture);
+      if (m.ring) { ring = m.ring; ringT0 = performance.now(); }
+    } else if (m.type === "say") {
+      ring = "none";
+      if (m.emotion) face.setEmotion(m.emotion);
+      showSub(m.text); add("it", m.text);
+    } else if (m.type === "heard") { add("me", m.text); }
+    else if (m.type === "timer") { add("it", `⏱ טיימר ${m.seconds} שניות ${m.label || ""}`); }
+    else if (m.type === "stop") { playAt = 0; }
+  };
+}
+connect();
+
+function add(cls, text) { const d = document.createElement("div"); d.className = cls; d.textContent = text; log.appendChild(d); log.scrollTop = 1e9; }
+function showSub(t) { sub.textContent = t; clearTimeout(subTimer); subTimer = setTimeout(() => sub.textContent = "", 6000); }
+
+function ensureAudio() { if (!audioCtx) audioCtx = new AudioContext({ sampleRate: 16000 }); if (audioCtx.state === "suspended") audioCtx.resume(); }
+function playPcm(buf) {
+  if (!audioCtx) return;
+  const s = new Int16Array(buf), f = new Float32Array(s.length);
+  let acc = 0;
+  for (let i = 0; i < s.length; i++) { f[i] = s[i] / 32768; acc += f[i] * f[i]; }
+  const b = audioCtx.createBuffer(1, f.length, 16000); b.copyToChannel(f, 0);
+  const src = audioCtx.createBufferSource(); src.buffer = b; src.connect(audioCtx.destination);
+  const now = audioCtx.currentTime; if (playAt < now) playAt = now + 0.05;
+  src.start(playAt);
+  const rms = Math.sqrt(acc / f.length), lv = rms < 0.012 ? 0 : Math.min(1, rms * 6), at = (playAt - now) * 1000;
+  setTimeout(() => level = lv, at); setTimeout(() => level = 0, at + b.duration * 1000 + 30);
+  playAt += b.duration;
+}
+
+document.getElementById("f").onsubmit = (e) => {
+  e.preventDefault(); ensureAudio();
+  const q = document.getElementById("q"); if (!q.value.trim()) return;
+  add("me", q.value); ws.send(JSON.stringify({ type: "text", text: q.value })); q.value = "";
+  face.setEmotion("thinking"); ring = "think"; ringT0 = performance.now();
+};
+
+// ---- browser push-to-talk (16 kHz PCM, same as the board)
+const ptt = document.getElementById("ptt");
+let micStream, micNode, micSrc, recording = false;
+async function startRec() {
+  ensureAudio();
+  micStream = micStream || await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
+  micSrc = audioCtx.createMediaStreamSource(micStream);
+  micNode = audioCtx.createScriptProcessor(1024, 1, 1);
+  micNode.onaudioprocess = (e) => {
+    if (!recording) return;
+    const x = e.inputBuffer.getChannelData(0), o = new Int16Array(x.length); let acc = 0;
+    for (let i = 0; i < x.length; i++) { o[i] = Math.max(-1, Math.min(1, x[i])) * 32767; acc += x[i] * x[i]; }
+    micLevel = Math.min(1, Math.sqrt(acc / x.length) * 8);
+    ws.send(o.buffer);
+  };
+  micSrc.connect(micNode); micNode.connect(audioCtx.destination);
+  recording = true; ptt.classList.add("rec"); ptt.textContent = "מקליט… שחרר לשליחה";
+  ws.send(JSON.stringify({ type: "ptt_start", id: "sim", sample_rate: 16000 }));
+  face.setEmotion("listening"); ring = "rec"; ringT0 = performance.now();
+}
+function stopRec() {
+  if (!recording) return;
+  recording = false; ptt.classList.remove("rec"); ptt.textContent = "החזק לדבר (מיקרופון הדפדפן)";
+  micNode && micNode.disconnect(); micSrc && micSrc.disconnect();
+  ws.send(JSON.stringify({ type: "ptt_end", id: "sim" }));
+  face.setEmotion("thinking"); ring = "think"; ringT0 = performance.now(); micLevel = 0;
+}
+ptt.onpointerdown = startRec; ptt.onpointerup = stopRec; ptt.onpointerleave = stopRec;
+</script>
+</body>
+</html>

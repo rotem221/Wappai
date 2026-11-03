@@ -1,0 +1,123 @@
+:root {
+  color-scheme: light;
+  --bg: #f7f9f8;
+  --panel: #fff;
+  --panel2: #edf3ef;
+  --line: #dfe8e2;
+  --text: #20312d;
+  --muted: #6a8074;
+  --dim: #80948a;
+  --accent: #14846a;
+  --accent-ink: #fff;
+  --good: #24956f;
+  --r: 24px;
+}
+header,
+nav.tabs {
+  background: #ffffffc9;
+  backdrop-filter: blur(25px) saturate(1.3);
+  -webkit-backdrop-filter: blur(25px) saturate(1.3);
+  border-color: #dbe8df88;
+}
+header {
+  padding-inline: max(20px, calc((100vw - 1100px) / 2));
+  gap: 15px;
+}
+header .logo {
+  border-radius: 12px;
+  border: 0;
+  background: none;
+}
+.web-chat-link {
+  font-size: 11px;
+  color: var(--accent);
+  text-decoration: none;
+}
+.card {
+  box-shadow: 0 8px 35px #24453205;
+}
+.card h2 {
+  letter-spacing: 0.2px;
+}
+.big {
+  letter-spacing: -0.8px;
+}
+button:hover {
+  background: var(--line);
+}
+button.primary {
+  color: white;
+}
+nav.tabs {
+  margin: 10px auto;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  max-width: 1080px;
+}
+button,
+input,
+select,
+textarea {
+  border-radius: 14px;
+}
+button.danger {
+  color: #bb4b4b;
+  background: #b84b4b0a;
+  border-color: #b84b4b22;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #101917;
+  --panel: #1b2925;
+  --panel2: #243d32;
+  --line: #344b3f;
+  --text: #e3eee8;
+  --muted: #8b9f93;
+  --dim: #8b9f93;
+  --accent: #8dddbb;
+  --accent-ink: #142c20;
+}
+html[data-theme="dark"] header,
+html[data-theme="dark"] nav.tabs {
+  background: #1d2b25dd;
+}
+html[data-theme="dark"] button.primary {
+  color: #142c20;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="system"] {
+    color-scheme: dark;
+    --bg: #101917;
+    --panel: #1b2925;
+    --panel2: #243d32;
+    --line: #344b3f;
+    --text: #e3eee8;
+    --muted: #8b9f93;
+    --dim: #8b9f93;
+    --accent: #8dddbb;
+    --accent-ink: #142c20;
+  }
+  html[data-theme="system"] header,
+  html[data-theme="system"] nav.tabs {
+    background: #1d2b25dd;
+  }
+  html[data-theme="system"] button.primary {
+    color: #142c20;
+  }
+}
+@media (max-width: 899px) {
+  nav.tabs {
+    left: 10px;
+    right: 10px;
+    bottom: 5px;
+    margin: 0;
+    border-radius: 23px;
+    overflow: hidden;
+  }
+  header {
+    padding: 15px 18px;
+  }
+  main {
+    padding: 15px 12px 32px;
+  }
+}

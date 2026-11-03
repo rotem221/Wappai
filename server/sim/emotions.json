@@ -1,0 +1,2698 @@
+{
+ "name": "Piko",
+ "eyeShapes": [
+  "round",
+  "arc_up",
+  "arc_down",
+  "heart",
+  "star",
+  "spiral",
+  "x",
+  "squint",
+  "line"
+ ],
+ "mouthShapes": [
+  "curve",
+  "o",
+  "wave",
+  "cat",
+  "none"
+ ],
+ "anims": [
+  "none",
+  "sway",
+  "bounce",
+  "tremble",
+  "float",
+  "wobble",
+  "lean"
+ ],
+ "fx": [
+  "hearts",
+  "tears",
+  "sweat",
+  "zzz",
+  "sparkles",
+  "question",
+  "exclaim",
+  "anger",
+  "notes",
+  "steam",
+  "dots",
+  "blush"
+ ],
+ "emotions": {
+  "idle": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "browL": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 0,
+    "y": 92,
+    "w": 40,
+    "curve": 9,
+    "open": 0,
+    "th": 9,
+    "rot": 0,
+    "shape": "curve"
+   },
+   "face": {
+    "cheek": 0,
+    "dy": 0,
+    "scale": 1.2,
+    "rot": 0,
+    "glow": 0.55,
+    "anim": "none",
+    "animAmp": 1,
+    "fx": []
+   },
+   "color": "#62F2DF"
+  },
+  "happy": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 88,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0.3,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 88,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0.3,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "browL": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 0,
+    "y": 92,
+    "w": 58,
+    "curve": 16,
+    "open": 6,
+    "th": 9,
+    "rot": 0,
+    "shape": "curve"
+   },
+   "face": {
+    "cheek": 0.55,
+    "dy": 0,
+    "scale": 1.2,
+    "rot": 0,
+    "glow": 0.55,
+    "anim": "sway",
+    "animAmp": 0.5,
+    "fx": []
+   },
+   "color": "#62F2DF"
+  },
+  "joy": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "arc_up"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "arc_up"
+   },
+   "browL": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 0,
+    "y": 92,
+    "w": 66,
+    "curve": 16,
+    "open": 24,
+    "th": 9,
+    "rot": 0,
+    "shape": "curve"
+   },
+   "face": {
+    "cheek": 0.8,
+    "dy": 0,
+    "scale": 1.2,
+    "rot": 0,
+    "glow": 0.55,
+    "anim": "bounce",
+    "animAmp": 0.8,
+    "fx": []
+   },
+   "color": "#62F2DF"
+  },
+  "love": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 84,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "heart"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 84,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "heart"
+   },
+   "browL": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 0,
+    "y": 92,
+    "w": 46,
+    "curve": 12,
+    "open": 4,
+    "th": 9,
+    "rot": 0,
+    "shape": "curve"
+   },
+   "face": {
+    "cheek": 0.9,
+    "dy": 0,
+    "scale": 1.2,
+    "rot": 0,
+    "glow": 0.55,
+    "anim": "sway",
+    "animAmp": 0.7,
+    "fx": [
+     "hearts"
+    ]
+   },
+   "color": "#FF7AB6"
+  },
+  "excited": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 86,
+    "h": 106,
+    "r": 38,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 1,
+    "shape": "round"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 86,
+    "h": 106,
+    "r": 38,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 1,
+    "shape": "round"
+   },
+   "browL": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 0,
+    "y": 92,
+    "w": 52,
+    "curve": 14,
+    "open": 18,
+    "th": 9,
+    "rot": 0,
+    "shape": "curve"
+   },
+   "face": {
+    "cheek": 0,
+    "dy": 0,
+    "scale": 1.2,
+    "rot": 0,
+    "glow": 0.55,
+    "anim": "bounce",
+    "animAmp": 1,
+    "fx": [
+     "sparkles"
+    ]
+   },
+   "color": "#62F2DF"
+  },
+  "starstruck": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 90,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "star"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 90,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "star"
+   },
+   "browL": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 0,
+    "y": 92,
+    "w": 30,
+    "curve": 9,
+    "open": 22,
+    "th": 9,
+    "rot": 0,
+    "shape": "o"
+   },
+   "face": {
+    "cheek": 0,
+    "dy": 0,
+    "scale": 1.2,
+    "rot": 0,
+    "glow": 0.55,
+    "anim": "bounce",
+    "animAmp": 0.5,
+    "fx": [
+     "sparkles"
+    ]
+   },
+   "color": "#FFD84D"
+  },
+  "proud": {
+   "eyeL": {
+    "dx": 80,
+    "y": -24,
+    "w": 82,
+    "h": 84,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0.26,
+    "lidTA": -4,
+    "lidB": 0.2,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -24,
+    "w": 82,
+    "h": 84,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0.26,
+    "lidTA": -4,
+    "lidB": 0.2,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "browL": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 6,
+    "y": 92,
+    "w": 46,
+    "curve": 11,
+    "open": 0,
+    "th": 9,
+    "rot": 6,
+    "shape": "curve"
+   },
+   "face": {
+    "cheek": 0.3,
+    "dy": -8,
+    "scale": 1.2,
+    "rot": 0,
+    "glow": 0.55,
+    "anim": "none",
+    "animAmp": 1,
+    "fx": []
+   },
+   "color": "#62F2DF"
+  },
+  "curious": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 84,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0.14,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 84,
+    "h": 110,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "browL": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0.9,
+    "y": 26,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": -8,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 8,
+    "y": 92,
+    "w": 16,
+    "curve": 9,
+    "open": 12,
+    "th": 9,
+    "rot": 0,
+    "shape": "o"
+   },
+   "face": {
+    "cheek": 0,
+    "dy": 0,
+    "scale": 1.2,
+    "rot": 8,
+    "glow": 0.55,
+    "anim": "none",
+    "animAmp": 1,
+    "fx": []
+   },
+   "color": "#62F2DF"
+  },
+  "thinking": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0.18,
+    "lidTA": 0,
+    "lidB": 0.08,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 92,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0.18,
+    "lidTA": 0,
+    "lidB": 0.08,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "browL": {
+    "a": 0.8,
+    "y": 24,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": -10,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 14,
+    "y": 92,
+    "w": 28,
+    "curve": -2,
+    "open": 0,
+    "th": 9,
+    "rot": -6,
+    "shape": "curve"
+   },
+   "face": {
+    "cheek": 0,
+    "dy": 0,
+    "scale": 1.2,
+    "rot": 0,
+    "glow": 0.55,
+    "anim": "none",
+    "animAmp": 1,
+    "fx": [
+     "dots"
+    ]
+   },
+   "color": "#7FC4FF"
+  },
+  "confused": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 78,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0.24,
+    "lidTA": 10,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 106,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "browL": {
+    "a": 0.8,
+    "y": 16,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 10,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0.8,
+    "y": 28,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": -12,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 0,
+    "y": 92,
+    "w": 46,
+    "curve": 4,
+    "open": 0,
+    "th": 9,
+    "rot": 0,
+    "shape": "wave"
+   },
+   "face": {
+    "cheek": 0,
+    "dy": 0,
+    "scale": 1.2,
+    "rot": -8,
+    "glow": 0.55,
+    "anim": "none",
+    "animAmp": 1,
+    "fx": [
+     "question"
+    ]
+   },
+   "color": "#62F2DF"
+  },
+  "surprised": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 84,
+    "h": 112,
+    "r": 42,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 1,
+    "shape": "round"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 84,
+    "h": 112,
+    "r": 42,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 1,
+    "shape": "round"
+   },
+   "browL": {
+    "a": 0.9,
+    "y": 30,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0.9,
+    "y": 30,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 0,
+    "y": 92,
+    "w": 28,
+    "curve": 9,
+    "open": 28,
+    "th": 9,
+    "rot": 0,
+    "shape": "o"
+   },
+   "face": {
+    "cheek": 0,
+    "dy": 0,
+    "scale": 1.24,
+    "rot": 0,
+    "glow": 0.55,
+    "anim": "none",
+    "animAmp": 1,
+    "fx": []
+   },
+   "color": "#62F2DF"
+  },
+  "shocked": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 92,
+    "h": 120,
+    "r": 46,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 1,
+    "shape": "round"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 92,
+    "h": 120,
+    "r": 46,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 1,
+    "shape": "round"
+   },
+   "browL": {
+    "a": 1,
+    "y": 34,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": -6,
+    "curve": 0
+   },
+   "browR": {
+    "a": 1,
+    "y": 34,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": -6,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 0,
+    "y": 92,
+    "w": 40,
+    "curve": 9,
+    "open": 46,
+    "th": 9,
+    "rot": 0,
+    "shape": "o"
+   },
+   "face": {
+    "cheek": 0,
+    "dy": 0,
+    "scale": 1.26,
+    "rot": 0,
+    "glow": 0.55,
+    "anim": "none",
+    "animAmp": 1,
+    "fx": [
+     "exclaim"
+    ]
+   },
+   "color": "#62F2DF"
+  },
+  "scared": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 70,
+    "h": 100,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0.1,
+    "lidTA": -16,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 70,
+    "h": 100,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0.1,
+    "lidTA": -16,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "browL": {
+    "a": 0.9,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": -20,
+    "curve": 3
+   },
+   "browR": {
+    "a": 0.9,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": -20,
+    "curve": 3
+   },
+   "mouth": {
+    "dx": 0,
+    "y": 92,
+    "w": 52,
+    "curve": 5,
+    "open": 0,
+    "th": 9,
+    "rot": 0,
+    "shape": "wave"
+   },
+   "face": {
+    "cheek": 0,
+    "dy": 6,
+    "scale": 1.2,
+    "rot": 0,
+    "glow": 0.55,
+    "anim": "tremble",
+    "animAmp": 1,
+    "fx": [
+     "sweat"
+    ]
+   },
+   "color": "#9EE7FF"
+  },
+  "nervous": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 72,
+    "h": 94,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": -8,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 72,
+    "h": 94,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": -8,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "browL": {
+    "a": 0.6,
+    "y": 18,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": -12,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0.6,
+    "y": 18,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": -12,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 0,
+    "y": 92,
+    "w": 48,
+    "curve": 3,
+    "open": 0,
+    "th": 9,
+    "rot": 0,
+    "shape": "wave"
+   },
+   "face": {
+    "cheek": 0,
+    "dy": 0,
+    "scale": 1.2,
+    "rot": 0,
+    "glow": 0.55,
+    "anim": "tremble",
+    "animAmp": 0.4,
+    "fx": [
+     "sweat"
+    ]
+   },
+   "color": "#62F2DF"
+  },
+  "sad": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 84,
+    "r": 41,
+    "rot": -5,
+    "lidT": 0.32,
+    "lidTA": -16,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 84,
+    "r": 41,
+    "rot": -5,
+    "lidT": 0.32,
+    "lidTA": -16,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "browL": {
+    "a": 0.8,
+    "y": 18,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": -18,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0.8,
+    "y": 18,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": -18,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 0,
+    "y": 92,
+    "w": 42,
+    "curve": -12,
+    "open": 0,
+    "th": 9,
+    "rot": 0,
+    "shape": "curve"
+   },
+   "face": {
+    "cheek": 0,
+    "dy": 10,
+    "scale": 1.2,
+    "rot": 0,
+    "glow": 0.35,
+    "anim": "none",
+    "animAmp": 1,
+    "fx": []
+   },
+   "color": "#7FA8FF"
+  },
+  "crying": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 80,
+    "h": 84,
+    "r": 41,
+    "rot": -5,
+    "lidT": 0.32,
+    "lidTA": -16,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "squint"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 80,
+    "h": 84,
+    "r": 41,
+    "rot": -5,
+    "lidT": 0.32,
+    "lidTA": -16,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "squint"
+   },
+   "browL": {
+    "a": 0.8,
+    "y": 18,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": -18,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0.8,
+    "y": 18,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": -18,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 0,
+    "y": 92,
+    "w": 50,
+    "curve": -12,
+    "open": 16,
+    "th": 9,
+    "rot": 0,
+    "shape": "curve"
+   },
+   "face": {
+    "cheek": 0,
+    "dy": 10,
+    "scale": 1.2,
+    "rot": 0,
+    "glow": 0.35,
+    "anim": "tremble",
+    "animAmp": 0.35,
+    "fx": [
+     "tears"
+    ]
+   },
+   "color": "#7FA8FF"
+  },
+  "angry": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 90,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0.36,
+    "lidTA": 24,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 90,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0.36,
+    "lidTA": 24,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "browL": {
+    "a": 1,
+    "y": 10,
+    "dx": 0,
+    "w": 56,
+    "th": 11,
+    "ang": 26,
+    "curve": 0
+   },
+   "browR": {
+    "a": 1,
+    "y": 10,
+    "dx": 0,
+    "w": 56,
+    "th": 11,
+    "ang": 26,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 0,
+    "y": 92,
+    "w": 46,
+    "curve": -10,
+    "open": 0,
+    "th": 9,
+    "rot": 0,
+    "shape": "curve"
+   },
+   "face": {
+    "cheek": 0,
+    "dy": 0,
+    "scale": 1.2,
+    "rot": 0,
+    "glow": 0.55,
+    "anim": "tremble",
+    "animAmp": 0.35,
+    "fx": [
+     "anger"
+    ]
+   },
+   "color": "#FF6A4D"
+  },
+  "furious": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 90,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0.42,
+    "lidTA": 30,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 90,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0.42,
+    "lidTA": 30,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "browL": {
+    "a": 1,
+    "y": 10,
+    "dx": 0,
+    "w": 56,
+    "th": 11,
+    "ang": 26,
+    "curve": 0
+   },
+   "browR": {
+    "a": 1,
+    "y": 10,
+    "dx": 0,
+    "w": 56,
+    "th": 11,
+    "ang": 26,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 0,
+    "y": 92,
+    "w": 54,
+    "curve": -6,
+    "open": 18,
+    "th": 9,
+    "rot": 0,
+    "shape": "curve"
+   },
+   "face": {
+    "cheek": 0,
+    "dy": 0,
+    "scale": 1.2,
+    "rot": 0,
+    "glow": 0.8,
+    "anim": "tremble",
+    "animAmp": 1,
+    "fx": [
+     "anger",
+     "steam"
+    ]
+   },
+   "color": "#FF3B30"
+  },
+  "annoyed": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0.45,
+    "lidTA": 6,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0.45,
+    "lidTA": 6,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "browL": {
+    "a": 0.7,
+    "y": 8,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 8,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0.7,
+    "y": 8,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 8,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 10,
+    "y": 92,
+    "w": 34,
+    "curve": -2,
+    "open": 0,
+    "th": 9,
+    "rot": -4,
+    "shape": "curve"
+   },
+   "face": {
+    "cheek": 0,
+    "dy": 0,
+    "scale": 1.2,
+    "rot": 0,
+    "glow": 0.55,
+    "anim": "none",
+    "animAmp": 1,
+    "fx": []
+   },
+   "color": "#62F2DF"
+  },
+  "skeptical": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0.45,
+    "lidTA": 4,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 104,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "browL": {
+    "a": 0.9,
+    "y": 8,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 10,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0.9,
+    "y": 32,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": -10,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 10,
+    "y": 92,
+    "w": 34,
+    "curve": -3,
+    "open": 0,
+    "th": 9,
+    "rot": -10,
+    "shape": "curve"
+   },
+   "face": {
+    "cheek": 0,
+    "dy": 0,
+    "scale": 1.2,
+    "rot": 0,
+    "glow": 0.55,
+    "anim": "none",
+    "animAmp": 1,
+    "fx": []
+   },
+   "color": "#62F2DF"
+  },
+  "bored": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0.5,
+    "lidTA": 0,
+    "lidB": 0.04,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0.5,
+    "lidTA": 0,
+    "lidB": 0.04,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "browL": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 0,
+    "y": 92,
+    "w": 30,
+    "curve": 0,
+    "open": 0,
+    "th": 9,
+    "rot": 0,
+    "shape": "curve"
+   },
+   "face": {
+    "cheek": 0,
+    "dy": 6,
+    "scale": 1.2,
+    "rot": 0,
+    "glow": 0.55,
+    "anim": "float",
+    "animAmp": 0.5,
+    "fx": []
+   },
+   "color": "#62F2DF"
+  },
+  "sleepy": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0.62,
+    "lidTA": -4,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0.62,
+    "lidTA": -4,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "browL": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 0,
+    "y": 92,
+    "w": 14,
+    "curve": 9,
+    "open": 8,
+    "th": 9,
+    "rot": 0,
+    "shape": "o"
+   },
+   "face": {
+    "cheek": 0,
+    "dy": 8,
+    "scale": 1.2,
+    "rot": 0,
+    "glow": 0.35,
+    "anim": "float",
+    "animAmp": 0.7,
+    "fx": []
+   },
+   "color": "#B49CFF"
+  },
+  "sleeping": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 74,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "arc_down"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 74,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "arc_down"
+   },
+   "browL": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 0,
+    "y": 92,
+    "w": 14,
+    "curve": 9,
+    "open": 6,
+    "th": 9,
+    "rot": 0,
+    "shape": "o"
+   },
+   "face": {
+    "cheek": 0,
+    "dy": 10,
+    "scale": 1.2,
+    "rot": 0,
+    "glow": 0.25,
+    "anim": "float",
+    "animAmp": 1,
+    "fx": [
+     "zzz"
+    ]
+   },
+   "color": "#9C86F0"
+  },
+  "dizzy": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 84,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "spiral"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 84,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "spiral"
+   },
+   "browL": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 0,
+    "y": 92,
+    "w": 48,
+    "curve": 5,
+    "open": 0,
+    "th": 9,
+    "rot": 0,
+    "shape": "wave"
+   },
+   "face": {
+    "cheek": 0,
+    "dy": 0,
+    "scale": 1.2,
+    "rot": 0,
+    "glow": 0.55,
+    "anim": "wobble",
+    "animAmp": 1,
+    "fx": [
+     "sparkles"
+    ]
+   },
+   "color": "#62F2DF"
+  },
+  "wink": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "arc_up"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0.25,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "browL": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 8,
+    "y": 92,
+    "w": 50,
+    "curve": 14,
+    "open": 4,
+    "th": 9,
+    "rot": 6,
+    "shape": "curve"
+   },
+   "face": {
+    "cheek": 0.4,
+    "dy": 0,
+    "scale": 1.2,
+    "rot": 0,
+    "glow": 0.55,
+    "anim": "none",
+    "animAmp": 1,
+    "fx": []
+   },
+   "color": "#62F2DF"
+  },
+  "mischievous": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0.3,
+    "lidTA": 16,
+    "lidB": 0.22,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0.3,
+    "lidTA": 16,
+    "lidB": 0.22,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "browL": {
+    "a": 0.8,
+    "y": 12,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 16,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0.8,
+    "y": 12,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 16,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 16,
+    "y": 92,
+    "w": 44,
+    "curve": 12,
+    "open": 0,
+    "th": 9,
+    "rot": 12,
+    "shape": "curve"
+   },
+   "face": {
+    "cheek": 0,
+    "dy": 0,
+    "scale": 1.2,
+    "rot": -4,
+    "glow": 0.55,
+    "anim": "none",
+    "animAmp": 1,
+    "fx": []
+   },
+   "color": "#B98CFF"
+  },
+  "shy": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 86,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0.1,
+    "lidTA": 0,
+    "lidB": 0.3,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 86,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0.1,
+    "lidTA": 0,
+    "lidB": 0.3,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "browL": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 0,
+    "y": 92,
+    "w": 22,
+    "curve": 2,
+    "open": 0,
+    "th": 9,
+    "rot": 0,
+    "shape": "wave"
+   },
+   "face": {
+    "cheek": 1,
+    "dy": 6,
+    "scale": 1.2,
+    "rot": 6,
+    "glow": 0.55,
+    "anim": "none",
+    "animAmp": 1,
+    "fx": [
+     "blush"
+    ]
+   },
+   "color": "#62F2DF"
+  },
+  "kiss": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "arc_up"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "arc_up"
+   },
+   "browL": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 6,
+    "y": 92,
+    "w": 14,
+    "curve": 9,
+    "open": 12,
+    "th": 9,
+    "rot": 0,
+    "shape": "o"
+   },
+   "face": {
+    "cheek": 0.8,
+    "dy": 0,
+    "scale": 1.2,
+    "rot": 0,
+    "glow": 0.55,
+    "anim": "none",
+    "animAmp": 1,
+    "fx": [
+     "hearts"
+    ]
+   },
+   "color": "#62F2DF"
+  },
+  "singing": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "arc_up"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "arc_up"
+   },
+   "browL": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 0,
+    "y": 92,
+    "w": 26,
+    "curve": 9,
+    "open": 18,
+    "th": 9,
+    "rot": 0,
+    "shape": "o"
+   },
+   "face": {
+    "cheek": 0.4,
+    "dy": 0,
+    "scale": 1.2,
+    "rot": 0,
+    "glow": 0.55,
+    "anim": "sway",
+    "animAmp": 1,
+    "fx": [
+     "notes"
+    ]
+   },
+   "color": "#62F2DF"
+  },
+  "relieved": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 78,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "arc_down"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 78,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "arc_down"
+   },
+   "browL": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 0,
+    "y": 92,
+    "w": 46,
+    "curve": 12,
+    "open": 0,
+    "th": 9,
+    "rot": 0,
+    "shape": "curve"
+   },
+   "face": {
+    "cheek": 0.4,
+    "dy": 4,
+    "scale": 1.2,
+    "rot": 0,
+    "glow": 0.55,
+    "anim": "none",
+    "animAmp": 1,
+    "fx": []
+   },
+   "color": "#62F2DF"
+  },
+  "determined": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0.24,
+    "lidTA": 18,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0.24,
+    "lidTA": 18,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "browL": {
+    "a": 0.9,
+    "y": 10,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 20,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0.9,
+    "y": 10,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 20,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 0,
+    "y": 92,
+    "w": 40,
+    "curve": -2,
+    "open": 0,
+    "th": 9,
+    "rot": 0,
+    "shape": "curve"
+   },
+   "face": {
+    "cheek": 0,
+    "dy": 0,
+    "scale": 1.2,
+    "rot": 0,
+    "glow": 0.75,
+    "anim": "none",
+    "animAmp": 1,
+    "fx": []
+   },
+   "color": "#62F2DF"
+  },
+  "listening": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 104,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 1,
+    "shape": "round"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 104,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 1,
+    "shape": "round"
+   },
+   "browL": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 0,
+    "y": 92,
+    "w": 26,
+    "curve": 4,
+    "open": 0,
+    "th": 9,
+    "rot": 0,
+    "shape": "curve"
+   },
+   "face": {
+    "cheek": 0,
+    "dy": 0,
+    "scale": 1.2,
+    "rot": 0,
+    "glow": 0.55,
+    "anim": "lean",
+    "animAmp": 1,
+    "fx": []
+   },
+   "color": "#62F2DF"
+  },
+  "speaking": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "browL": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 0,
+    "y": 92,
+    "w": 46,
+    "curve": 6,
+    "open": 2,
+    "th": 9,
+    "rot": 0,
+    "shape": "curve"
+   },
+   "face": {
+    "cheek": 0,
+    "dy": 0,
+    "scale": 1.2,
+    "rot": 0,
+    "glow": 0.55,
+    "anim": "none",
+    "animAmp": 1,
+    "fx": []
+   },
+   "color": "#62F2DF"
+  },
+  "working": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0.22,
+    "lidTA": 8,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0.22,
+    "lidTA": 8,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "browL": {
+    "a": 0.6,
+    "y": 14,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 12,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0.6,
+    "y": 14,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 12,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": -6,
+    "y": 92,
+    "w": 30,
+    "curve": 0,
+    "open": 0,
+    "th": 9,
+    "rot": 0,
+    "shape": "curve"
+   },
+   "face": {
+    "cheek": 0,
+    "dy": 0,
+    "scale": 1.2,
+    "rot": 0,
+    "glow": 0.55,
+    "anim": "none",
+    "animAmp": 1,
+    "fx": [
+     "dots"
+    ]
+   },
+   "color": "#62F2DF"
+  },
+  "success": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "arc_up"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "arc_up"
+   },
+   "browL": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 0,
+    "y": 92,
+    "w": 56,
+    "curve": 16,
+    "open": 10,
+    "th": 9,
+    "rot": 0,
+    "shape": "curve"
+   },
+   "face": {
+    "cheek": 0.5,
+    "dy": 0,
+    "scale": 1.2,
+    "rot": 0,
+    "glow": 0.55,
+    "anim": "bounce",
+    "animAmp": 0.5,
+    "fx": [
+     "sparkles"
+    ]
+   },
+   "color": "#62F2DF"
+  },
+  "error": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 74,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "x"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 74,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "x"
+   },
+   "browL": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 0,
+    "y": 92,
+    "w": 44,
+    "curve": 4,
+    "open": 0,
+    "th": 9,
+    "rot": 0,
+    "shape": "wave"
+   },
+   "face": {
+    "cheek": 0,
+    "dy": 0,
+    "scale": 1.2,
+    "rot": 0,
+    "glow": 0.6,
+    "anim": "none",
+    "animAmp": 1,
+    "fx": []
+   },
+   "color": "#FF4D4D"
+  },
+  "disconnected": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 70,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "x"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 70,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "x"
+   },
+   "browL": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 0,
+    "y": 92,
+    "w": 30,
+    "curve": -2,
+    "open": 0,
+    "th": 9,
+    "rot": 0,
+    "shape": "curve"
+   },
+   "face": {
+    "cheek": 0,
+    "dy": 6,
+    "scale": 1.2,
+    "rot": 0,
+    "glow": 0.15,
+    "anim": "none",
+    "animAmp": 1,
+    "fx": []
+   },
+   "color": "#6B7A8A"
+  },
+  "low_battery": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 98,
+    "r": 41,
+    "rot": -6,
+    "lidT": 0.55,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 82,
+    "h": 98,
+    "r": 41,
+    "rot": -6,
+    "lidT": 0.55,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "round"
+   },
+   "browL": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 0,
+    "y": 92,
+    "w": 34,
+    "curve": 3,
+    "open": 0,
+    "th": 9,
+    "rot": 0,
+    "shape": "wave"
+   },
+   "face": {
+    "cheek": 0,
+    "dy": 10,
+    "scale": 1.2,
+    "rot": 0,
+    "glow": 0.3,
+    "anim": "none",
+    "animAmp": 1,
+    "fx": [
+     "sweat"
+    ]
+   },
+   "color": "#FFB13B"
+  },
+  "yawn": {
+   "eyeL": {
+    "dx": 80,
+    "y": -18,
+    "w": 70,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "squint"
+   },
+   "eyeR": {
+    "dx": 80,
+    "y": -18,
+    "w": 70,
+    "h": 98,
+    "r": 41,
+    "rot": 0,
+    "lidT": 0,
+    "lidTA": 0,
+    "lidB": 0,
+    "hl": 0.9,
+    "shape": "squint"
+   },
+   "browL": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "browR": {
+    "a": 0,
+    "y": 20,
+    "dx": 0,
+    "w": 56,
+    "th": 10,
+    "ang": 0,
+    "curve": 0
+   },
+   "mouth": {
+    "dx": 0,
+    "y": 92,
+    "w": 40,
+    "curve": 9,
+    "open": 44,
+    "th": 9,
+    "rot": 0,
+    "shape": "o"
+   },
+   "face": {
+    "cheek": 0,
+    "dy": 4,
+    "scale": 1.2,
+    "rot": 0,
+    "glow": 0.55,
+    "anim": "none",
+    "animAmp": 1,
+    "fx": []
+   },
+   "color": "#B49CFF"
+  }
+ }
+}
