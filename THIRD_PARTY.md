@@ -11,6 +11,6 @@ The MIT license covers original Wappai code and original project artwork. It doe
 
 Waveshare, ESP32, Apple, Claude, Codex and ElevenLabs are names of their respective owners. This independent project is not an official product of those companies.
 
-- Landing fonts: Heebo and Manrope, SIL Open Font License 1.1; bundled notices in `site/fonts/`.
+- Landing fonts: Assistant, Gveret Levin, Heebo and Manrope, SIL Open Font License 1.1; bundled notices in `site/fonts/`.
 
 - GitHub icon: Simple Icons, CC0-1.0; source https://github.com/simple-icons/simple-icons; notice in `site/assets/icons/LICENSE.md`.
