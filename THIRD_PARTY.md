@@ -10,3 +10,5 @@ The MIT license covers original Wappai code and original project artwork. It doe
 - Apple frameworks remain Apple's property. The iOS development package is unsigned and requires the recipient's own development signing.
 
 Waveshare, ESP32, Apple, Claude, Codex and ElevenLabs are names of their respective owners. This independent project is not an official product of those companies.
+
+- Landing fonts: Heebo and Manrope, SIL Open Font License 1.1; bundled notices in `site/fonts/`.

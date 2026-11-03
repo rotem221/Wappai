@@ -1,0 +1,22 @@
+{
+  "date": "2026-11-03",
+  "device_captures": {
+    "source": "Connected Waveshare 1.75C RGB565 framebuffer via USB serial",
+    "files": [
+      "device-happy.png",
+      "device-thinking.png",
+      "device-dizzy.png"
+    ],
+    "trigger": "Existing display debug commands; no flash or configuration changes"
+  },
+  "ios_chat": {
+    "source": "Unmodified production SwiftUI views; isolated Debug simulator build",
+    "data": "Sample conversation, no personal account messages",
+    "file": "ios-chat.png"
+  },
+  "other_examples": {
+    "web-chat.png": "Original Web UI QA capture with example data",
+    "ios-voices.png": "Original iOS voice-settings capture"
+  },
+  "future_models": "1.8 and 2.16 are explicitly labeled previews of the 1.75C UI; not validated firmware."
+}
