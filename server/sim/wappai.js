@@ -125,11 +125,11 @@ function renderSessions() {
     .filter((s) => s.title.toLowerCase().includes(q))
     .map(
       (s) =>
-        `<button class="session ${s.id === state.active_session ? "active" : ""}" data-session="${esc(s.id)}"><span>${esc(s.title)}</span><small>${esc(s.provider)}</small></button>`,
+        `<div class="session-row"><button class="session ${s.id === state.active_session ? "active" : ""}" data-session="${esc(s.id)}"><span>${esc(s.title)}</span><small>${esc(s.provider)}</small></button><button class="session-delete" data-delete-session="${esc(s.id)}" aria-label="מחיקת השיחה: ${esc(s.title)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7m4-7v7"/></svg></button></div>`,
     )
     .join("");
   $("#sessions")
-    .querySelectorAll("button")
+    .querySelectorAll("[data-session]")
     .forEach((b) =>
       action(b, async () => {
         await api(`/v1/sessions/${b.dataset.session}/select`, {});
@@ -137,6 +137,14 @@ function renderSessions() {
         if (innerWidth <= 760) drawer(false);
       }),
     );
+  $("#sessions").querySelectorAll("[data-delete-session]").forEach((b) =>
+    action(b, async () => {
+      const session = state.sessions.find((s) => s.id === b.dataset.deleteSession);
+      if (!session || !confirm(`למחוק את השיחה ״${session.title}״? ההודעות יימחקו מ־Wappai בכל המכשירים המחוברים. לא ניתן לבטל את המחיקה.`)) return;
+      await api(`/v1/sessions/${session.id}/delete`, {});
+      await refresh();
+    }),
+  );
 }
 $("#chat-search").oninput = () => state && renderSessions();
 function renderMessages() {
@@ -264,6 +272,7 @@ function event(e) {
       if (petPlayer) petPlayer.motion = "idle";
       refresh().catch(() => {});
       break;
+    case "session.deleted":
     case "session.active":
     case "pips.updated":
     case "pip.selected":
@@ -650,19 +659,30 @@ async function jobs() {
 function createPip(target) {
   panel(
     target ? "עיצוב מחדש" : "יצירת דמות חדשה",
-    `<p class="hint">תאר את הדמות או צרף תמונה. קודם נציג תצוגה מקדימה; רק לאחר אישורך ניצור את כל ההבעות והתנועות.</p><form id="pip-form">${field("שם הדמות", `<input id="pip-name" class="input" maxlength="30" required value="${esc(target?.name || "")}">`)}${field("איך הדמות נראית?", `<textarea id="pip-description" class="input" maxlength="1200" rows="4" placeholder="למשל: שועל קטן בצבע לבנדר, עם צעיף ירוק ועיניים סקרניות">${esc(target?.description || "")}</textarea>`)}${field("תמונת השראה (אפשרות)", '<input id="pip-image" class="input" type="file" accept="image/png,image/jpeg,image/webp">')}<img id="reference-preview" class="pip-preview" hidden alt="התמונה שבחרת"><button class="primary">יצירת תצוגה מקדימה</button></form>`,
+    `<p class="hint">תאר את הדמות או צרף תמונה. קודם נציג תצוגה מקדימה; רק לאחר אישורך ניצור את כל ההבעות והתנועות.</p><form id="pip-form">${field("שם הדמות", `<input id="pip-name" class="input" maxlength="30" required value="${esc(target?.name || "")}">`)}<div id="pip-description-field">${field("איך הדמות נראית?", `<textarea id="pip-description" class="input" maxlength="1200" rows="4" placeholder="למשל: שועל קטן בצבע לבנדר, עם צעיף ירוק ועיניים סקרניות">${esc(target?.description || "")}</textarea>`)}</div>${field("תמונת השראה (אפשרות)", '<input id="pip-image" class="input" type="file" accept="image/png,image/jpeg,image/webp">')}<img id="reference-preview" class="pip-preview" hidden alt="התמונה שבחרת"><button class="primary">יצירת תצוגה מקדימה</button></form>`,
   );
-  let reference;
+  let reference, loadingImage = false;
+  const imageMode = () => {
+    $("#pip-description-field").hidden = !!reference;
+    $("#pip-name").required = !reference;
+    $("#pip-name").closest("label").hidden = !!reference;
+    $("#pip-form .primary").textContent = reference ? "אישור התמונה ויצירת תצוגה מקדימה" : "יצירת תצוגה מקדימה";
+  };
   $("#pip-image").onchange = async (e) => {
     reference = null;
     $("#reference-preview").hidden = true;
     const file = e.target.files[0];
+    imageMode();
     if (!file) return;
+    loadingImage = true;
+    $("#pip-image").disabled = true;
+    $("#pip-form .primary").disabled = true;
     try {
       if (file.size > 12 * 1024 * 1024) throw Error("בחר תמונה קטנה מ־12MB");
       const bitmap = await createImageBitmap(file),
         c = document.createElement("canvas"),
         scale = Math.min(1, 1024 / Math.max(bitmap.width, bitmap.height));
+      if (Math.min(bitmap.width, bitmap.height) < 32) {bitmap.close(); throw Error("בחרו תמונה בגודל 32×32 פיקסלים לפחות");}
       c.width = Math.round(bitmap.width * scale);
       c.height = Math.round(bitmap.height * scale);
       c.getContext("2d").drawImage(bitmap, 0, 0, c.width, c.height);
@@ -672,20 +692,24 @@ function createPip(target) {
       $("#reference-preview").src = data;
       $("#reference-preview").hidden = false;
     } catch (e) {
-      notice(e.message);
+      notice("לא ניתן להשתמש בתמונה. " + e.message);
+    } finally {
+      loadingImage = false;
+      $("#pip-image").disabled = false;
+      $("#pip-form .primary").disabled = false;
+      imageMode();
     }
   };
   $("#pip-form").onsubmit = async (e) => {
     e.preventDefault();
+    if (loadingImage) return;
     const b = e.submitter;
     b.disabled = true;
     try {
-      const description =
-        $("#pip-description").value.trim() ||
-        (reference ? "צור דמות לפי התמונה המצורפת" : "");
-      if (description.length < 3) throw Error("יש להוסיף תיאור או תמונה");
+      const description = reference ? "" : $("#pip-description").value.trim();
+      if (!reference && description.length < 3) throw Error("יש להוסיף תיאור או תמונה");
       await api("/v1/pip-jobs", {
-        name: $("#pip-name").value.trim(),
+        name: reference ? (target?.name || "") : $("#pip-name").value.trim(),
         description,
         reference,
         target: target?.id,

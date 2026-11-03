@@ -106,9 +106,9 @@ enum SecureStore {
             SecureStore.put("hub.token."+server,key);UserDefaults.standard.set(server,forKey:"wappai.server");paired=true;error="";start()
         } catch {self.error=error.localizedDescription}
     }
-    func refresh() async throws {
+    func refresh(preserveCurrentTurn:Bool=false) async throws {
         let snap=try JSONDecoder().decode(Snapshot.self,from:await call("/v1/snapshot"))
-        liveTranscript="";interaction="";homeBadge=nil
+        if !preserveCurrentTurn || active != snap.active_session {liveTranscript="";interaction="";homeBadge=nil}
         sessions=snap.sessions;messages=snap.messages;active=snap.active_session;device=snap.device;pips=snap.pips;providers=snap.providers;preferences=snap.settings;cursor=snap.cursor
         if let id=snap.selected_pip,let p=pips.first(where:{$0.id==id}){choose(p)}
         for p in pips where p.asset_id != nil {await loadArt(p)}
@@ -132,7 +132,7 @@ enum SecureStore {
                         let next=obj["cursor"] as? Int ?? cursor
                         if next<cursor {continue};cursor=next
                         let type=obj["type"] as? String ?? ""
-                        if type=="session.active" {try await refresh();continue}
+                        if type=="session.active" || type=="session.deleted" {let previous=active;try await refresh(preserveCurrentTurn:true);if active != previous {state="idle"};continue}
                         if let sid=obj["session_id"] as? String,sid != active {continue}
                         if type=="transcript.partial" {liveTranscript=preferences.live_transcription == true ? (obj["text"] as? String ?? ""):""}
                         if type=="interaction" {interaction=obj["text"] as? String ?? "";state="thinking";homeBadge=nil}
@@ -174,6 +174,19 @@ enum SecureStore {
         do {try await call("/v1/sessions",body:["provider":provider]);try await refresh();state="idle"}catch{self.error=error.localizedDescription}
     }
     func select(_ sid:String) async {do{try await call("/v1/sessions/\(sid)/select",body:[:]);try await refresh()}catch{self.error=error.localizedDescription}}
+    func deleteSession(_ sid:String) async -> Bool {
+        do {
+            if uiTesting {
+                sessions.removeAll{$0.id==sid}
+                if sessions.isEmpty {sessions=[.init(id:UUID().uuidString,title:"שיחה חדשה",provider:"claude",created:Date().timeIntervalSince1970)]}
+                if active==sid {active=sessions[0].id;messages=[];state="idle"}
+            }else {
+                try await call("/v1/sessions/\(sid)/delete",body:[:])
+                let previous=active;try await refresh(preserveCurrentTurn:true);if active != previous {state="idle"}
+            }
+            error="";return true
+        }catch{self.error=error.localizedDescription;return false}
+    }
     func choose(_ pip:PipSkin){chosenID=pip.id;chosenPip=pip.rig;chosenColor=pip.color;UserDefaults.standard.set(pip.id,forKey:"wappai.pip.id");UserDefaults.standard.set(pip.rig,forKey:"wappai.pip.rig");UserDefaults.standard.set(pip.color,forKey:"wappai.pip.color")}
     func activate(_ pip:PipSkin) async {do{try await call("/v1/pips/\(pip.id)/activate",body:[:],timeout:70);choose(pip);await loadArt(pip);error=""}catch{self.error=error.localizedDescription}}
     func loadArt(_ pip:PipSkin) async {

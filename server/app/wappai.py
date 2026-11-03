@@ -202,6 +202,38 @@ def register(app,context):
         sid=store.session(p); await select(sid); return {'id':sid}
     @app.post('/v1/sessions/{sid}/select')
     async def change(sid:str,request:Request): require(request); await select(sid); return {'id':sid}
+    @app.post('/v1/sessions/{sid}/delete')
+    async def delete_session(sid:str,request:Request):
+        global active
+        require(request)
+        rows=store.rows('SELECT provider FROM sessions WHERE id=?',(sid,))
+        if not rows:raise HTTPException(404,'השיחה אינה קיימת')
+        if sid==active and ctx.hub.task and not ctx.hub.task.done():
+            raise HTTPException(409,'יש לסיים או לעצור את התשובה לפני מחיקת השיחה')
+        # Keep validation and the transaction synchronous: no turn can start
+        # against a session while it is being removed.
+        mids=store.rows('SELECT id FROM messages WHERE session_id=?',(sid,))
+        next_active=active
+        with store.db:
+            store.db.execute('DELETE FROM messages WHERE session_id=?',(sid,))
+            store.db.execute('DELETE FROM requests WHERE session_id=?',(sid,))
+            store.db.execute("DELETE FROM events WHERE json_extract(body,'$.session_id')=?",(sid,))
+            store.db.execute('DELETE FROM sessions WHERE id=?',(sid,))
+            if active==sid:
+                remaining=store.rows('SELECT id FROM sessions ORDER BY created DESC LIMIT 1')
+                next_active=remaining[0]['id'] if remaining else uuid.uuid4().hex
+                if not remaining:store.db.execute('INSERT INTO sessions VALUES (?,?,?,?)',(next_active,'שיחה חדשה',rows[0]['provider'],time.time()))
+                store.db.execute("INSERT INTO app_meta VALUES ('active_session',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",(next_active,))
+        active=next_active
+        agent=agents.pop(sid,None)
+        for message in mids:partial.pop(message['id'],None)
+        await emit({'type':'session.deleted','deleted_session_id':sid,'active_session':active})
+        if agent:
+            try:await agent.reset()
+            except Exception:
+                import logging
+                logging.getLogger(__name__).warning('Deleted conversation agent cleanup failed')
+        return {'ok':True,'active_session':active}
     @app.post('/v1/sessions/{sid}/messages')
     async def message(sid:str,request:Request):
         require(request); d=await request.json(); return await submit(d.get('text'),d.get('idempotency_key'),sid)

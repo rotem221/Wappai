@@ -155,15 +155,17 @@ class PipStudio:
         async def create(request:Request):
             self.auth(request)
             d=await json_object(request)
-            if not isinstance(d,dict) or not isinstance(d.get('name'),str) or not isinstance(d.get('description'),str) or d.get('target') is not None and not isinstance(d['target'],str):raise HTTPException(422,'שם ותיאור לא תקינים')
-            name=d['name'].strip();brief=d['description'].strip();target=d.get('target')
-            if not 1<=len(name)<=30 or len(name.encode())>63 or not 3<=len(brief)<=1200:raise HTTPException(422,'יש להזין שם ותיאור של הדמות')
+            if not isinstance(d,dict) or not isinstance(d.get('name',''),str) or not isinstance(d.get('description',''),str) or d.get('target') is not None and not isinstance(d['target'],str):raise HTTPException(422,'שם ותיאור לא תקינים')
+            name=d.get('name','').strip();brief=d.get('description','').strip();target=d.get('target')
             old=self.writable(target) if target else None
             if len(self.tasks)>=2:raise HTTPException(409,'כבר מתבצעות שתי יצירות; המתינו לסיום')
             reference=None
             if d.get('reference'):
-                try:reference=pip_assets.png(pip_assets.read_image(base64.b64decode(d['reference'],validate=True)))
-                except Exception:raise HTTPException(422,'התמונה המצורפת אינה תקינה')
+                try:reference=pip_assets.reference_image(base64.b64decode(d['reference'],validate=True))
+                except Exception:raise HTTPException(422,'התמונה אינה תקינה או ריקה. בחרו תמונה ברורה בגודל 32×32 פיקסלים לפחות ונסו שוב.')
+                brief='צור Pip מהדמות המרכזית בתמונה. שמור על זהותה והצבעים שלה בסגנון הפיקסלים של Wappai, מותאם למסך המכשיר.'
+                name=name or (old['name'] if old else 'Pip חדש')
+            if not 1<=len(name)<=30 or len(name.encode())>63 or not 3<=len(brief)<=1200:raise HTTPException(422,'יש להזין שם ותיאור, או לבחור תמונה')
             if reference is None and old and old.get('asset_id'):reference=(self.root/'assets'/old['asset_id']/'preview.png').read_bytes()
             jid=uuid.uuid4().hex;directory=self.root/jid;directory.mkdir()
             if reference:(directory/'reference.png').write_bytes(reference)

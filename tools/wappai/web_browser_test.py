@@ -53,9 +53,11 @@ with sync_playwright() as pw:
     page.locator('[data-pip=pip]').click();expect(page.locator('#delete-pip')).to_have_count(0)
     page.locator('[data-motion=dizzy]').click();page.wait_for_timeout(400);page.screenshot(path=str(OUT/'spirals.png'))
     page.locator('#back-pips').click();page.locator('#create-pip').click()
-    page.locator('#pip-name').fill('דמות לבדיקת ממשק');page.locator('#pip-description').fill('שועל קטן ולבנדר עם צעיף ירוק')
+    # Photo mode accepts no name or description and still gates the full build.
     page.locator('#pip-image').set_input_files(str(Path(__file__).resolve().parents[2]/'server/sim/pixel-0-0.png'))
     expect(page.locator('#reference-preview')).to_be_visible()
+    expect(page.locator('#pip-name')).to_be_hidden();expect(page.locator('#pip-description')).to_be_hidden()
+    expect(page.locator('#pip-form button')).to_have_text('אישור התמונה ויצירת תצוגה מקדימה')
     page.locator('#pip-form button').click();expect(page.locator('[data-apply]')).to_be_visible()
     page.screenshot(path=str(OUT/'preview-approval.png'))
     page.locator('[data-apply]').click();expect(page.locator('#jobs')).to_contain_text('יוצר את כל ההבעות')
@@ -87,9 +89,24 @@ with sync_playwright() as pw:
     assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
     pet=page.locator('#floating-pip');box=pet.bounding_box();page.mouse.move(box['x']+40,box['y']+40);page.mouse.down();page.wait_for_timeout(500);page.mouse.up();expect(page.locator('#pet-menu')).to_be_visible();page.locator('#hide-pet').click();expect(pet).to_be_hidden();page.reload();expect(pet).to_be_hidden()
     page.screenshot(path=str(OUT/'mobile-chat.png'))
+    # Deletion is confirmed, durable and propagated to another connected client.
+    page.set_viewport_size({'width':1440,'height':1000});page.reload()
+    expect(page.locator('#workspace')).to_be_visible()
+    original=page.locator('.session.active').get_attribute('data-session')
+    inactive=page.locator('.session:not(.active)').first.get_attribute('data-session')
+    remove=page.locator(f'[data-delete-session="{inactive}"]')
+    page.once('dialog',lambda dialog:dialog.dismiss());remove.click();expect(remove).to_be_visible()
+    page.once('dialog',lambda dialog:dialog.accept());remove.click();expect(remove).to_have_count(0)
+    expect(page.locator('.session.active')).to_have_attribute('data-session',original)
+    observer=context.new_page();observer.goto(BASE);expect(observer.locator('#chat-title')).to_have_text('היום שלי')
+    page.once('dialog',lambda dialog:dialog.accept());page.locator(f'[data-delete-session="{original}"]').click()
+    expect(page.locator('.welcome')).to_be_visible();expect(observer.locator('.welcome')).to_be_visible()
+    expect(page.locator('.session')).to_have_count(1)
+    page.reload();expect(page.locator('.session')).to_have_count(1);expect(page.locator('.welcome')).to_be_visible()
+    observer.close()
     assert not errors,errors
     # Admin styling remains reachable through the existing admin login mechanism.
     page.goto(BASE+'/admin/login?code='+Path(f'/tmp/wappai-web-qa-admin-{port}').read_text());page.wait_for_timeout(500);page.screenshot(path=str(OUT/'admin-mobile.png'))
-    assert page.locator('.web-chat-link').count()==1
+    expect(page.get_by_role('link',name='השיחות שלי',exact=False)).to_be_visible()
     context.close();browser.close()
 print('Browser QA passed: login, shared history, text/XSS, captions, badge, settings, voice errors, Pip preview approval/cancel, custom CRUD, built-in protection, RTL mobile swipe, theme, floating Pip and admin styling.')

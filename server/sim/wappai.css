@@ -1296,3 +1296,9 @@ body[data-theme="dark"] .message.user {
   max-width: calc(100% - 30px);
   background: var(--surface);
 }
+
+.session-row {display:flex;align-items:center;gap:4px}
+.session-row .session {flex:1;min-width:0}
+.session-delete {flex-shrink:0;width:44px;height:44px;display:grid;place-items:center;border:0;border-radius:14px;background:transparent;color:var(--muted)}
+.session-delete:hover {background:rgba(220,60,60,.1);color:#db4242}
+.session-delete svg {width:18px;height:18px}

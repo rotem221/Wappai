@@ -88,4 +88,38 @@ final class WappaiUITests:XCTestCase {
         XCTAssertTrue(app.staticTexts["תמלול"].waitForExistence(timeout:5))
         let detail=XCTAttachment(screenshot:app.screenshot());detail.name="Meeting transcript";detail.lifetime = .keepAlways;add(detail)
     }
+
+    func testSidebarDeleteRequiresConfirmationAndKeepsUsableChat() {
+        let start=app.coordinate(withNormalizedOffset:CGVector(dx:0.995,dy:0.4))
+        start.press(forDuration:0.1,thenDragTo:app.coordinate(withNormalizedOffset:CGVector(dx:0.3,dy:0.4)))
+        let options=app.buttons["sessionOptions-ui-qa"]
+        XCTAssertTrue(options.waitForExistence(timeout:5));options.tap()
+        app.buttons["מחיקת השיחה"].tap()
+        XCTAssertTrue(app.alerts["למחוק את השיחה?"].waitForExistence(timeout:5))
+        app.alerts.buttons["ביטול"].tap();XCTAssertTrue(options.exists)
+        options.tap();app.buttons["מחיקת השיחה"].tap();app.alerts.buttons["מחיקה"].tap()
+        XCTAssertTrue(options.waitForNonExistence(timeout:5))
+        XCTAssertTrue(app.buttons["שיחה חדשה"].exists)
+        XCTAssertFalse(app.staticTexts["בדיקת ממשק"].exists)
+        let screenshot=XCTAttachment(screenshot:app.screenshot());screenshot.name="Sidebar after confirmed deletion";screenshot.lifetime = .keepAlways;add(screenshot)
+    }
+
+    // Seed the isolated simulator Photos library with server/sim/pixel-0-0.png.
+    func testImageCharacterNeedsOnlyImageConfirmation() {
+        pip.tap();app.buttons["יצירת Pip חדש"].tap()
+        app.buttons["תמונה מהספרייה"].tap()
+        let photo=app.images.matching(identifier:"PXGGridLayout-Info").firstMatch
+        XCTAssertTrue(photo.waitForExistence(timeout:8),app.debugDescription)
+        photo.tap()
+        let confirm=app.buttons["אישור התמונה ויצירת תצוגה מקדימה"]
+        XCTAssertTrue(confirm.waitForExistence(timeout:8),app.debugDescription)
+        XCTAssertTrue(confirm.isEnabled)
+        XCTAssertFalse(app.textFields["שם הדמות"].exists)
+        XCTAssertFalse(app.descendants(matching:.any)["pipDescription"].firstMatch.exists)
+        XCTAssertFalse(app.buttons["אישור ויצירה מלאה"].exists)
+        let screenshot=XCTAttachment(screenshot:app.screenshot());screenshot.name="Image confirmation without brief";screenshot.lifetime = .keepAlways;add(screenshot)
+        app.buttons["הסרת התמונה"].tap()
+        XCTAssertTrue(app.textFields["שם הדמות"].waitForExistence(timeout:5))
+        XCTAssertFalse(app.buttons["יצירת תצוגה מקדימה"].isEnabled)
+    }
 }

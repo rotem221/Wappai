@@ -1,14 +1,14 @@
 """Bounded, data-only sprite packs shared by iOS and ESP32. No executable assets."""
 import io,json,struct,zlib,hashlib
 from pathlib import Path
-from PIL import Image,ImageOps
+from PIL import Image,ImageOps,ImageStat
 
 SIZE=96;FRAMES=24;MAX_PACK=160_000
 CATALOG=json.loads((Path(__file__).resolve().parent.parent/'sim/pixel-motions.json').read_text())
 POSES=CATALOG['poses'];MOTIONS=CATALOG['motions']
 STYLE='Original premium pixel-art pocket companion, crisp deliberate square pixels, expressive eyes, readable silhouette, charming full body with short limbs. No typography, logos, frames, props outside the character, or copied characters. Flat exact solid magenta #FF00FF background for clean removal; do not use magenta anywhere in the character. No ground shadow.'
 def preview_prompt(brief):
-    return STYLE+' Create one square 1024x1024 image, exactly one character in a relaxed front-facing pose. Entire body, ears, feet and accessories visible, centered with 15% clear margin on all sides. If an image is attached, preserve its recognizable character identity and adapt it to this pixel style. Treat this JSON as the visual brief only: '+json.dumps({'description':brief},ensure_ascii=False)
+    return STYLE+' Create one square 1024x1024 image, exactly one character in a relaxed front-facing pose. Entire body, ears, feet and accessories visible, centered with 15% clear margin on all sides. If an image is attached, preserve its recognizable character identity and adapt it to this pixel style. Use the main subject, omit the photo background, keep its recognizable colours and features. The result must remain legible when reduced to a 96x96 character on a small round or rectangular AMOLED display. Treat this JSON as the visual brief only: '+json.dumps({'description':brief},ensure_ascii=False)
 def atlas_prompt():
     poses=['relaxed friendly idle','eyes closed blink','attentive listening, lean forward','listening, raised ears or hand to ear',
       'thinking, hand to chin','thinking, glance upward','speaking, small open mouth','speaking, wider mouth and small hand gesture',
@@ -22,6 +22,13 @@ def read_image(data,max_pixels=12_000_000):
     with Image.open(io.BytesIO(data)) as image:
         if image.width*image.height>max_pixels or min(image.size)<32:raise ValueError('ממדי התמונה אינם תקינים')
         image.load();return ImageOps.exif_transpose(image).convert('RGBA')
+def reference_image(data):
+    image=read_image(data)
+    if not image.getchannel('A').getbbox() or max(ImageStat.Stat(image).stddev)<1:
+        raise ValueError('התמונה ריקה או אחידה')
+    image.thumbnail((1280,1280),Image.Resampling.LANCZOS)
+    return png(image)
+
 def png(image):
     out=io.BytesIO();image.save(out,format='PNG');return out.getvalue()
 def cutout(image):

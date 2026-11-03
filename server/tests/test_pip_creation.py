@@ -248,3 +248,33 @@ def test_chroma_key_removes_dark_matte_fringe_without_erasing_violet():
     assert result.getpixel((13,10))==im.getpixel((13,10))
     # A genuinely transparent authored image is not chroma-keyed at all.
     im.putpixel((0,0),(0,0,0,0));assert pip_assets.cutout(im).tobytes()==im.tobytes()
+
+
+def test_reference_only_defaults_and_still_requires_preview_approval(studio,monkeypatch):
+    s,c,h=studio;calls=[];monkeypatch.setattr(s,'launch',lambda *args:calls.append(args))
+    response=c.post('/v1/pip-jobs',headers=h,json={'reference':base64.b64encode(sheet()).decode()})
+    assert response.status_code==200
+    job=response.json();assert job['name']=='Pip חדש' and 'Wappai' in job['description']
+    assert calls==[(job['id'],'preview')]
+    assert c.post('/v1/pip-jobs/'+job['id']+'/apply',headers=h,json={}).status_code==409
+    assert len(s.store.rows('SELECT * FROM pips'))==3
+    async def image(*args):return sheet()
+    s.image=image;asyncio.run(s.run(job['id'],'preview'))
+    ready=s.get(job['id']);assert ready['status']=='preview_ready'
+    assert c.post('/v1/pip-jobs/'+job['id']+'/apply',headers=h,json={'preview_sha':'old'}).status_code==409
+    assert c.post('/v1/pip-jobs/'+job['id']+'/apply',headers=h,json={'preview_sha':ready['preview_sha']}).status_code==200
+    assert calls[-1]==(job['id'],'build')
+
+
+@pytest.mark.parametrize('data',[
+    b'not an image',
+    pip_assets.png(Image.new('RGBA',(16,16),(20,50,200,255))),
+    pip_assets.png(Image.new('RGBA',(64,64),(20,50,200,0))),
+    pip_assets.png(Image.new('RGBA',(64,64),(255,255,255,255))),
+])
+def test_invalid_reference_never_creates_job(studio,monkeypatch,data):
+    s,c,h=studio;calls=[];monkeypatch.setattr(s,'launch',lambda *args:calls.append(args))
+    before=s.jobs()
+    response=c.post('/v1/pip-jobs',headers=h,json={'reference':base64.b64encode(data).decode()})
+    assert response.status_code==422 and 'התמונה' in response.json()['detail']
+    assert s.jobs()==before and not calls

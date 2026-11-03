@@ -189,3 +189,54 @@ def test_live_partial_is_ephemeral_and_reaches_client():
             event=ws.receive_json()
             assert event['type']=='transcript.partial' and event['text']=='תמלול חי' and 'cursor' not in event
             assert wappai.store.db.execute('SELECT COUNT(*) FROM events').fetchone()[0]==before
+
+
+def test_delete_session_auth_busy_and_history_isolation(monkeypatch,tmp_path):
+    store=wappai.Store(tmp_path/'delete.db');sid=store.session();other=store.session()
+    monkeypatch.setattr(wappai,'store',store);monkeypatch.setattr(wappai,'active',sid)
+    monkeypatch.setattr(wappai,'agents',{});monkeypatch.setattr(wappai,'partial',{})
+    monkeypatch.setattr(hub,'task',None)
+    mid=store.message(sid,'assistant','remove me');store.message(other,'user','keep me')
+    store.event({'type':'say','session_id':sid,'text':'remove me'})
+    store.event({'type':'say','session_id':other,'text':'keep me'})
+    store.db.execute('INSERT INTO requests VALUES (?,?,?)',('delete-key',sid,'hash'));store.db.commit()
+    wappai.partial[mid]='remove me'
+    h=auth();path='/v1/sessions/'+sid+'/delete'
+    assert c.post(path,json={}).status_code==401
+    class Busy:
+        def done(self):return False
+    hub.task=Busy()
+    assert c.post(path,headers=h,json={}).status_code==409
+    assert store.rows('SELECT id FROM sessions WHERE id=?',(sid,))
+    hub.task=None
+    assert c.post(path,headers=h,json={}).json()['active_session']==other
+    assert not store.rows('SELECT * FROM messages WHERE session_id=?',(sid,))
+    assert not store.rows('SELECT * FROM requests WHERE session_id=?',(sid,))
+    assert not any(e.get('session_id')==sid for e in store.events(0))
+    assert store.rows('SELECT text FROM messages')[0]['text']=='keep me'
+    assert mid not in wappai.partial
+    assert store.events(0)[-1]['type']=='session.deleted'
+    assert store.rows("SELECT value FROM app_meta WHERE key='active_session'")[0]['value']==other
+    assert c.post(path,headers=h,json={}).status_code==404
+    # Deleting the last conversation leaves one usable, empty session.
+    response=c.post('/v1/sessions/'+other+'/delete',headers=h,json={})
+    new=response.json()['active_session'];assert new not in (sid,other)
+    assert len(store.rows('SELECT * FROM sessions'))==1 and not store.rows('SELECT * FROM messages')
+    assert c.get('/v1/snapshot',headers=h).json()['active_session']==new
+
+
+def test_delete_inactive_session_does_not_interrupt_current_turn(monkeypatch,tmp_path):
+    store=wappai.Store(tmp_path/'inactive.db');active=store.session();old=store.session()
+    monkeypatch.setattr(wappai,'store',store);monkeypatch.setattr(wappai,'active',active)
+    monkeypatch.setattr(wappai,'agents',{});monkeypatch.setattr(wappai,'partial',{})
+    class Busy:
+        def done(self):return False
+    monkeypatch.setattr(hub,'task',Busy())
+    class Agent:
+        async def reset(self):
+            # Deletion is committed before the first await; a stale client cannot select it.
+            assert not store.rows('SELECT id FROM sessions WHERE id=?',(old,))
+    wappai.agents[old]=Agent();store.message(active,'user','current')
+    assert c.post('/v1/sessions/'+old+'/delete',headers=auth(),json={}).status_code==200
+    assert wappai.active==active and old not in wappai.agents
+    assert store.rows('SELECT text FROM messages')[0]['text']=='current'
