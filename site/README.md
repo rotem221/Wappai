@@ -29,3 +29,9 @@ Product preview treatments use CSS lighting, gradients, perspective and shadows 
 Hebrew interface copy uses locally hosted Assistant, with Gveret Levin for short handwritten accents. Both come from the official Google Fonts repository under SIL OFL 1.1. Manrope remains the Latin wordmark. The shared responsive footer links to static, JavaScript-independent terms, privacy and accessibility pages. These describe the current demo site and independent self-hosted product; they do not claim a formal accessibility certification. Public GitHub Issues is the listed contact channel; no private personal contact details are published.
 
 Verified desktop (1800 px), mobile (390 px), narrow layout (320 px), legal navigation via keyboard, dialog Escape, internal asset links and HTTP responses. Legal content must be reviewed when hosting, data collection, distribution or contact channels change.
+
+## Simplified opening (version 5)
+
+The opening now has a two-line Gveret Levin handwritten headline, one short description and one downloads action. Firmware, iOS and source links are grouped in the existing dialog. The six scene pills and duplicate download/source links were removed from the intro; automatic examples and the next/pause/model controls remain in the product studio. Sriracha is the locally hosted Latin wordmark across the landing page, footer and information pages (SIL OFL 1.1, official Google Fonts upstream).
+
+Verified desktop, 390/320-pixel layouts, the combined downloads dialog, keyboard Escape and next/pause animation controls. No console errors or horizontal document overflow.
