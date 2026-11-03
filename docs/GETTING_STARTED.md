@@ -35,23 +35,45 @@ Enter your HTTPS Hub URL and that code in Wappai on iOS, or enter the code on yo
 
 ## 2. Flash the 1.75C
 
-Download and unzip `Wappai-1.75C-firmware.zip` from Releases. Install `esptool` and `pyserial` in a Python virtual environment, then run:
+The recommended public installation entry is [Wappai browser installer](https://wappai-companion.rotem221.chatgpt.site/flash.html). Use Chrome or Edge on a desktop computer and a USB **data** cable. iPhone/Safari does not provide this installation flow. Only the **1.75C in the silver enclosure** is supported; ESP Web Tools checks the chip family, not the display or enclosure.
+
+### Back up before replacing existing software
+
+The browser installer does **not** make a device backup. Its factory image writes from address `0x0` and may overwrite settings inside its address range even when a full-chip erase is not selected. To retain your current installation, first save a private full-chip backup with esptool in a Python virtual environment:
 
 ```sh
 python -m pip install 'esptool>=4.8,<6' pyserial
-python flash.py --port /dev/cu.usbmodemYOUR_PORT --board 1.75C
-python configure_hub.py --port /dev/cu.usbmodemYOUR_PORT
+python -m esptool --chip esp32s3 --port /dev/cu.usbmodemYOUR_PORT read_flash 0 ALL wappai-private-backup.bin
 ```
 
-On Windows use a port such as `COM5`; on Linux `/dev/ttyACM0`. The flash helper verifies package hashes and saves a complete **private** device backup before writing the bootloader, partition table, OTA metadata and application. It does not erase the whole chip. If you already use another layout, inspect and retain your backup before proceeding. The merged factory image is also supplied for tools that accept a single binary at `0x0`; it is intended for initial installation and may overwrite saved settings in its address range.
+Use a new backup filename each time. On Windows use a port such as `COM5`; on Linux `/dev/ttyACM0`. Keep backups private: they can contain network credentials or device tokens. Close serial monitors before using the browser. For a device that does not appear, hold BOOT while connecting USB, release, and select the new port.
+
+### Install in the browser
+
+1. Open the installer. It downloads the public factory image and checks its byte length, ESP32-S3 header and pinned SHA-256 checksum before enabling installation.
+2. Confirm that your hardware is the supported 1.75C and your required data is backed up.
+3. Click the connect/install button and select the USB port. ESP Web Tools shows the connection, erase choice, final installation confirmation and progress in English. Selecting a port alone does not flash firmware.
+4. Wait for completion, restart the device, then configure your own Hub and Wi-Fi as described below. There are no shared credentials in this image.
+
+The browser uses the exact bytes already verified, via an in-memory Blob. It does not upload device flash or serial logs to the site. The factory binary is the same verified public `v1.0.0-dev.1` release. The previous ZIP and command-line flash helper remain available in GitHub Releases for developers; the helper creates a backup before flashing individual parts.
+
+### Configure your Hub after flashing
+
+The current firmware does not implement Improv Wi-Fi and the browser installer cannot provision your Hub. Obtain `configure_hub.py` from `tools/` in the source repository (or the developer package), then run:
+
+```sh
+python configure_hub.py --port /dev/cu.usbmodemYOUR_PORT
+```
 
 `configure_hub.py` prompts for your `wss://YOUR_HOST/ws` address and the same Hub `DEVICE_TOKEN`, without showing the secret or putting it in shell history. It stores these on the device and reboots. Wi-Fi is configured through Bluetooth in the iOS app (physical BOOT confirmation), or by `tools/setup_wifi.py`. ESP32-S3 supports **2.4 GHz Wi-Fi**, not 5 GHz.
 
 To build your own firmware, run `pio run -d firmware`. The public `secrets.example.h` is used when no ignored `secrets.h` exists. Device configuration can still be supplied after flashing.
 
-## 3. Install the iOS development app
+## 3. iOS App Store and developer builds
 
-The release `.ipa` is **unsigned**. It cannot install directly from a Safari download. Sign it with your own provisioning/signing setup, or build from Xcode:
+App Store distribution is planned. The website displays “Coming soon” until a real listing URL is configured; there is no public App Store link yet. You can use the personal Hub Web UI meanwhile.
+
+For developers, the release `.ipa` is **unsigned**. It cannot install directly from a Safari download. Sign it with your own provisioning/signing setup, or build from Xcode:
 
 1. Open `ios/Piko/Piko.xcodeproj` in Xcode with an iOS 18+ SDK.
 2. Choose your own development team and a bundle identifier available to you.

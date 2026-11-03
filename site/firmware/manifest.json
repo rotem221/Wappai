@@ -1,0 +1,17 @@
+{
+  "name": "Wappai 1.75C",
+  "version": "1.0.0-dev.1",
+  "new_install_prompt_erase": true,
+  "new_install_improv_wait_time": 0,
+  "builds": [
+    {
+      "chipFamily": "ESP32-S3",
+      "parts": [
+        {
+          "path": "Wappai-1.75C-factory.bin",
+          "offset": 0
+        }
+      ]
+    }
+  ]
+}

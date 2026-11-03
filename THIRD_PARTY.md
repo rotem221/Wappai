@@ -14,3 +14,5 @@ Waveshare, ESP32, Apple, Claude, Codex and ElevenLabs are names of their respect
 - Landing fonts: Assistant, Gveret Levin, Sriracha, Heebo and Manrope, SIL Open Font License 1.1; bundled notices in `site/fonts/`.
 
 - GitHub icon: Simple Icons, CC0-1.0; source https://github.com/simple-icons/simple-icons; notice in `site/assets/icons/LICENSE.md`.
+
+- Browser installer: ESP Web Tools 10.4.0, Apache-2.0, https://github.com/esphome/esp-web-tools. Prebuilt runtime modules are served locally in `site/vendor/esp-web-tools/`; upstream and bundled dependency licenses are included there.

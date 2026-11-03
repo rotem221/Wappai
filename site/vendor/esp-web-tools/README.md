@@ -1,0 +1,1 @@
+ESP Web Tools 10.4.0, upstream prebuilt dist/web from https://registry.npmjs.org/esp-web-tools/-/esp-web-tools-10.4.0.tgz. Apache-2.0. Source: https://github.com/esphome/esp-web-tools. Bundled runtime dependency license notices are in licenses/. No CDN requests.

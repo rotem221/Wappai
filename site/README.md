@@ -35,3 +35,11 @@ Verified desktop (1800 px), mobile (390 px), narrow layout (320 px), legal navig
 The opening now has a two-line Gveret Levin handwritten headline, one short description and one downloads action. Firmware, iOS and source links are grouped in the existing dialog. The six scene pills and duplicate download/source links were removed from the intro; automatic examples and the next/pause/model controls remain in the product studio. Sriracha is the locally hosted Latin wordmark across the landing page, footer and information pages (SIL OFL 1.1, official Google Fonts upstream).
 
 Verified desktop, 390/320-pixel layouts, the combined downloads dialog, keyboard Escape and next/pause animation controls. No console errors or horizontal document overflow.
+
+## Browser installation (version 6)
+
+`flash.html` provides browser USB installation for the validated Waveshare 1.75C only. ESP Web Tools 10.4.0 is vendored locally with dependency license notices. The shipped public factory image is SHA-256 verified against `release-config.js`, checked for size/chip header, and installed from the same verified in-memory bytes. The user confirms board/backup before seeing the connect control. Upstream presents erase choice and final installation confirmation; no automatic full-chip erase is configured. The page makes clear that the factory address range can overwrite settings and that browser backup is not provided. Hub/Wi-Fi provisioning remains in the setup guide; no Improv support is implied.
+
+`release-config.js` contains `appStoreUrl: null`. Replace it with the actual `https://apps.apple.com/.../id...` listing after publication. Until then the UI shows a non-link “בקרוב ב־App Store”; no unsigned IPA is offered in the site UI. Developer artifacts remain in GitHub Releases. Keep the terms/privacy/accessibility pages in sync when this changes.
+
+Validation: `node --test tests/web-install.test.mjs` covers release checksum, truncation, mutation, wrong chip header, manifest constraints and store URL validation. Browser QA exercised initial verification, board-confirmation gating, a deliberately corrupted local file (blocked), successful retry after restoring the original, and narrow-screen layout. No actual USB flash was performed for this website change.
