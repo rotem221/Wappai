@@ -73,6 +73,8 @@ enum SecureStore {
     }
     @discardableResult func call(_ path:String,body:[String:Any]?=nil,auth:Bool=true,timeout:TimeInterval=20) async throws -> Data {
         if uiTesting {
+            if path=="/v1/meetings",body==nil{return Data(#"{"items":[{"id":"20261104-100000","title":"תכנון ההשקה","started":"2026-11-04T10:00:00","state":"done","minutes":24,"has_audio":false,"has_summary":true}],"capacity":{"remaining_seconds":7200,"used_bytes":850000000,"quota_bytes":4294967296,"cloud_configured":false,"max_session_seconds":18000},"recording":false}"#.utf8)}
+            if path=="/v1/meetings/20261104-100000",body==nil{return Data(#"{"id":"20261104-100000","title":"תכנון ההשקה","state":"done","seconds":1440,"summary":"ההשקה מתוכננת ליום חמישי.\nדנה תסיים את בדיקת התקציב עד יום שני.","transcript":"[0:00:02] נתחיל בתכנון ההשקה.\n[0:00:08] דנה תבדוק את התקציב עד יום שני."}"#.utf8)}
             if path=="/v1/voice",body==nil{return Data(#"{"provider":"edge","style":"lively","edge_voice":"he-IL-HilaNeural","voice_id":"","model_id":"eleven_v3","connected":false}"#.utf8)}
             if path=="/v1/pip-jobs" && body==nil{return Data("[]".utf8)};throw URLError(.notConnectedToInternet)}
         var request=URLRequest(url:try url(path));request.timeoutInterval=timeout
@@ -84,6 +86,17 @@ enum SecureStore {
             throw NSError(domain:"Wappai",code:(response as? HTTPURLResponse)?.statusCode ?? 0,userInfo:[NSLocalizedDescriptionKey:detail ?? "לא ניתן להתחבר לשרת"])
         }
         return data
+    }
+    func downloadMeetingAudio(_ id:String, part:String?=nil) async throws -> URL {
+        var components=URLComponents(url:try url("/v1/meetings/"+id+"/audio"),resolvingAgainstBaseURL:false)!
+        if let part {components.queryItems=[URLQueryItem(name:"part",value:part)]}
+        var request=URLRequest(url:components.url!);request.timeoutInterval=300
+        request.setValue("Bearer "+token,forHTTPHeaderField:"Authorization")
+        let (file,response)=try await URLSession.shared.download(for:request)
+        guard let http=response as? HTTPURLResponse,http.statusCode==200 else{throw URLError(.badServerResponse)}
+        let suffix=response.mimeType=="audio/wav" ? "wav":"m4a"
+        let target=FileManager.default.temporaryDirectory.appendingPathComponent("wappai-meeting-"+UUID().uuidString+"."+suffix)
+        try FileManager.default.moveItem(at:file,to:target);return target
     }
     func pair(code:String) async {
         do {

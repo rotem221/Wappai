@@ -18,7 +18,7 @@ for board in catalog['boards']:
  image=root/'site/firmware'/release['factory_file'];data=image.read_bytes()
  assert len(data)==release['bytes'] and hashlib.sha256(data).hexdigest()==release['sha256']
  assert data[0]==0xe9 and int.from_bytes(data[12:14],'little')==9
- assert release['version'] in (root/'firmware/include/config.h').read_text()
+ assert release['version'].encode()+b'\0' in data, 'Published image must contain its advertised firmware version'
  if (root/'release/firmware/manifest.json').exists():
   for part in json.loads((root/'release/firmware/manifest.json').read_text())['parts']:
    part_data=(root/'release/firmware'/part['file']).read_bytes();start=int(part['offset'],16)

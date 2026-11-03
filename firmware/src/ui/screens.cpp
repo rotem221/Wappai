@@ -340,7 +340,7 @@ void drawPage(LGFX_Sprite &s, int page, const Snap &d, uint32_t now, int haScrol
 }
 
 // ---------------------------------------------------------------- meeting
-void drawMeeting(LGFX_Sprite &s, const char *title, uint32_t elapsedMs, float level, bool online, size_t buffered, uint32_t now) {
+void drawMeeting(LGFX_Sprite &s, const char *title, uint32_t elapsedMs, float level, bool online, size_t buffered, uint32_t now, uint32_t limitSeconds) {
     nowMs = now;
     nBtns = 0;
     s.fillScreen(0);
@@ -354,6 +354,8 @@ void drawMeeting(LGFX_Sprite &s, const char *title, uint32_t elapsedMs, float le
     char t[16];
     snprintf(t, sizeof t, "%u:%02u:%02u", (unsigned)(sec / 3600), (unsigned)(sec / 60 % 60), (unsigned)(sec % 60));
     num(s, t, CX, 246, C_TXT, true, 0.72f);
+    char budget[64];snprintf(budget,sizeof budget,"מתוך %u דקות לכל היותר",(unsigned)(limitSeconds/60));
+    he(s,budget,288,C_DIM,0.55f);
     // listening: 9 bars from the mic level, the middle ones taller
     for (int i = 0; i < 9; i++) {
         float shape = 1.f - fabsf(i - 4) / 5.f;
@@ -364,7 +366,7 @@ void drawMeeting(LGFX_Sprite &s, const char *title, uint32_t elapsedMs, float le
     }
     if (!online) {
         char m[64];
-        snprintf(m, sizeof m, "אין חיבור. שומר במכשיר (%u שנ׳)", (unsigned)(buffered / 32000));
+        snprintf(m, sizeof m, "ללא רשת: %u שנ׳ במאגר זמני", (unsigned)(buffered / 32000));
         he(s, m, 356, C_AMBER, 0.6f);
     }
     pill(s, CX - 70, 376, 140, 52, (uint32_t)0x4A1820, "סיום", 0xFFC2C8, B_MEET_END, 0.9f);

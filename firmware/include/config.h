@@ -1,5 +1,5 @@
 #pragma once
-#define FW_VERSION "1.0.0-dev"
+#define FW_VERSION "1.1.0-dev"
 #define DEVICE_NAME "Wappai"
 
 #define SCREEN_W 466

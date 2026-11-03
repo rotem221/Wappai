@@ -27,3 +27,6 @@ void audioSetVolume(int v);                // speaker 0..100 (DAC volume, 100 = 
 void audioPipCue(uint8_t rig,const char *cue); // short, rate-limited, never interrupts speech
 
 void audioShakeComplaint(); // bundled Hebrew phrase, no network or model turn
+
+size_t audioMicDropped();
+bool audioMicCapacityStop();

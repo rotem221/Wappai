@@ -4,6 +4,7 @@
 // TLS (Tailscale Funnel) or plain ws on the LAN, the protocol (docs/PROTOCOL.md), mic upload and OTA.
 // Every WebSocket call happens in this task: the library is not thread-safe.
 #include "net.h"
+#include "storage/recording_store.h"
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
 #include <HTTPUpdate.h>
@@ -45,18 +46,39 @@ void netSend(const String &json) {
     if (xQueueSend(outQ, &s, 0) != pdTRUE) delete s;
 }
 
+static uint32_t meetingSeq=0,meetingLastSend=0;
+static bool meetingAwaitAck=false;
+static uint8_t *meetingPacket=nullptr;
+static int16_t *meetingBlock=nullptr;
+bool netMeetingReady(){return meetingPacket && meetingBlock;}
+static size_t meetingPacketLength=0;
+bool netRecordingPending(){return micActive || micStopPending;}
+void netTimerDone(){
+    Preferences n;n.begin("wappai-events",false);
+    String id=String((unsigned long)time(nullptr))+"-"+String(esp_random());n.putString("timer",id);n.end();
+    netSend(String("{\"type\":\"event\",\"name\":\"timer_done\",\"event_id\":\"")+id+"\"}");
+}
+static void retryTimerEvent(){
+    static uint32_t last=0;if(millis()-last<10000)return;last=millis();
+    Preferences n;n.begin("wappai-events",true);String id=n.isKey("timer")?n.getString("timer",""):String();n.end();
+    if(id.length())ws.sendTXT(String("{\"type\":\"event\",\"name\":\"timer_done\",\"event_id\":\"")+id+"\"}");
+}
 void netMicStart(bool meeting) {
     curUtt="";
     micMeeting = meeting;
+    meetingSeq=0;meetingAwaitAck=false;meetingPacketLength=0;
     adpcmReset = true;
-    if (meeting) { modelLock(); model.meetingId[0] = 0; model.meetingTitle[0] = 0; modelUnlock(); }
-    netSend(meeting ? "{\"type\":\"ptt_start\",\"id\":\"mic\",\"mode\":\"meeting\",\"sample_rate\":16000,\"codec\":\"adpcm\"}"
-                    : "{\"type\":\"ptt_start\",\"id\":\"mic\",\"sample_rate\":16000}");
+    if (meeting) { modelLock(); snprintf(model.meetingId,sizeof model.meetingId,"%lu-%lu",(unsigned long)time(nullptr),(unsigned long)esp_random()); model.meetingTitle[0] = 0; modelUnlock(); }
+    if(meeting)netSend(String("{\"type\":\"ptt_start\",\"mode\":\"meeting\",\"sample_rate\":16000,\"codec\":\"adpcm\",\"sequenced\":true,\"resume\":\"")+model.meetingId+"\"}");
+    else netSend("{\"type\":\"ptt_start\",\"id\":\"mic\",\"sample_rate\":16000}");
+    if(meeting)recordingStoreStart();
     audioMic(true);
     micActive = true;
 }
 
 void netMicStop() {
+    audioMic(false);
+    recordingStoreStopCapture();
     micActive = false;
     micStopPending = true;
 }
@@ -65,7 +87,7 @@ void netSetBattery(int pct, int mv, bool charging, bool usb) { batPct = pct; bat
 void netShutdown() { shutdownReq = true; delay(300); }
 
 // ---- IMA ADPCM (meetings): block = int16 predictor (LE), uint8 step index, 0, then 2 samples per byte (low nibble first)
-static const int ADPCM_BLOCK = 2048;
+static const int ADPCM_BLOCK = 8192;
 static const int16_t ADPCM_STEP[89] = {7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 19, 21, 23, 25, 28, 31, 34, 37, 41, 45, 50, 55, 60, 66, 73, 80,
     88, 97, 107, 118, 130, 143, 157, 173, 190, 209, 230, 253, 279, 307, 337, 371, 408, 449, 494, 544, 598, 658, 724, 796, 876, 963,
     1060, 1166, 1282, 1411, 1552, 1707, 1878, 2066, 2272, 2499, 2749, 3024, 3327, 3660, 4026, 4428, 4871, 5358, 5894, 6484, 7132,
@@ -118,7 +140,7 @@ static void sendHello() {
     modelLock();String custom=model.customPip?model.customPip->pip:"";modelUnlock();
     String m = "{\"type\":\"hello\",\"device_id\":\"" + WiFi.macAddress() + "\",\"fw_version\":\"" FW_VERSION
                "\",\"name\":\"" DEVICE_NAME "\",\"board\":\"ws-s3-175c\",\"screen\":[466,466],\"has_mic\":true,\"has_speaker\":true,\"battery\":" +
-               batteryJson() + ",\"custom_pip_id\":\""+custom+"\"}";
+               batteryJson() + ",\"storage\":"+recordingStoreStatus()+",\"custom_pip_id\":\""+custom+"\"}";
     ws.sendTXT(m);
 }
 
@@ -303,9 +325,14 @@ static void onText(const char *txt, size_t len) {
         for (int i = 0; i < m.nHa; i++) if (!strcmp(m.ha[i].id, it.id)) m.ha[i] = it;
         if (!strcmp(m.cardDev.id, it.id)) { m.cardDev = it; m.infoSeq++; }
         m.haSeq++;
+    } else if (!strcmp(t,"event.ack")) {
+        Preferences n;n.begin("wappai-events",false);if(n.isKey("timer") && n.getString("timer","")==String(d["event_id"]|""))n.remove("timer");n.end();
+    } else if (!strcmp(t,"meeting.ack")) {
+        if(meetingAwaitAck && (uint32_t)(d["seq"]|0u)==meetingSeq){meetingAwaitAck=false;meetingPacketLength=0;meetingSeq++;}
     } else if (!strcmp(t, "meeting")) {
         if (d["id"].is<const char *>()) strlcpy(m.meetingId, d["id"], sizeof m.meetingId);
         if (d["title"].is<const char *>()) copyUtf8(m.meetingTitle, d["title"], sizeof m.meetingTitle);
+        m.meetingLimitSeconds=d["capacity_seconds"]|18000u;
         m.meetingNew = true;
     } else if (!strcmp(t, "toast")) {
         copyUtf8(m.toast, d["text"] | "", sizeof m.toast);
@@ -324,10 +351,10 @@ static void onEvent(WStype_t type, uint8_t *payload, size_t len) {
             Serial.printf("ws: connected %s%s\n", host.c_str(), path.c_str());
             modelLock(); model.server = true; modelUnlock();
             sendHello();
-            if (micActive && micMeeting) {                  // a meeting was recording: continue the same one
-                char r[128];
+            if ((micActive || micStopPending) && micMeeting) {                  // a meeting was recording: continue the same one
+                char r[256];
                 modelLock();
-                snprintf(r, sizeof r, "{\"type\":\"ptt_start\",\"id\":\"mic\",\"mode\":\"meeting\",\"sample_rate\":16000,\"codec\":\"adpcm\",\"resume\":\"%s\"}", model.meetingId);
+                snprintf(r, sizeof r, "{\"type\":\"ptt_start\",\"id\":\"mic\",\"mode\":\"meeting\",\"sample_rate\":16000,\"codec\":\"adpcm\",\"sequenced\":true,\"resume\":\"%s\"}", model.meetingId);
                 modelUnlock();
                 ws.sendTXT(r);
                 Serial.printf("meeting: resume after reconnect, %u bytes buffered\n", (unsigned)audioMicQueued());
@@ -665,6 +692,7 @@ static void netTask(void *) {
         ws.loop();
         bool up = model.server;
         if (up) {
+            retryTimerEvent();
             tryStart = millis();
             static bool saved = false;
             if (!saved) { saved = true; prefs.putString("lan_ssid", using_ == 1 ? WiFi.SSID() : String("")); }
@@ -683,30 +711,32 @@ static void netTask(void *) {
             size_t n = 0;
             int guard = 0;
             if (micMeeting) {
-                // meetings: IMA ADPCM (4 bits/sample, 1/4 of the bandwidth), self-contained 2048-sample blocks.
+                // meetings: IMA ADPCM (4 bits/sample, 1/4 of the bandwidth), self-contained 8192-sample (512 ms) blocks.
                 // A weak Wi-Fi link keeps up, and a block lost to a reconnect never breaks the decoding of the next.
-                static int16_t blk[ADPCM_BLOCK];
+                int16_t *blk=meetingBlock;
                 static size_t have = 0;
-                while (guard++ < 6) {
-                    n = audioMicPop((uint8_t *)blk + have, sizeof blk - have);
-                    have += n;
-                    if (have == sizeof blk || (n == 0 && micStopPending && have > 0)) {
-                        uint8_t out[4 + ADPCM_BLOCK / 2];
-                        size_t len = adpcmEncode(blk, have / 2, out);
-                        ws.sendBIN(out, len);
-                        have = 0;
+                if(meetingAwaitAck){
+                    if(millis()-meetingLastSend>1500){ws.sendBIN(meetingPacket,meetingPacketLength);meetingLastSend=millis();}
+                }else{
+                    n=audioMicPop((uint8_t*)blk+have,ADPCM_BLOCK*sizeof(int16_t)-have);have+=n;
+                    if(have==ADPCM_BLOCK*sizeof(int16_t) || (n==0 && micStopPending && have>0)){
+                        memcpy(meetingPacket,"WAP1",4);memcpy(meetingPacket+4,&meetingSeq,4);
+                        meetingPacketLength=8+adpcmEncode(blk,have/2,meetingPacket+8);
+                        meetingAwaitAck=true;meetingLastSend=millis();
+                        ws.sendBIN(meetingPacket,meetingPacketLength);have=0;
                     }
-                    if (n == 0) break;
                 }
-                n = (micStopPending && audioMicQueued() == 0 && have == 0) ? 0 : 1;   // 0 = all sent
+                n=(micStopPending && audioMicQueued()==0 && have==0 && !meetingAwaitAck)?0:1;
             } else {
                 while ((n = audioMicPop(buf, sizeof buf)) > 0 && guard++ < 8) ws.sendBIN(buf, n);
             }
             if (micStopPending && n == 0) {
                 micStopPending = false;
                 audioMic(false);
+                if(micMeeting && audioMicCapacityStop())ws.sendTXT(String("{\"type\":\"event\",\"name\":\"recording_gap\",\"bytes\":")+String(audioMicDropped())+"}");
                 ws.sendTXT("{\"type\":\"ptt_end\",\"id\":\"mic\"}");
                 micMeeting = false;
+                recordingStoreClose();
             }
         }
         String *s;
@@ -714,10 +744,10 @@ static void netTask(void *) {
             ws.sendTXT(*s);
             delete s;
         }
-        if (millis() - lastStatus > 60000 && model.server) {
+        if (millis() - lastStatus > (micActive || micStopPending ? 5000u:60000u) && model.server) {
             lastStatus = millis();
             String st = "{\"type\":\"status\",\"rssi\":" + String(WiFi.RSSI()) + ",\"heap\":" + String(ESP.getFreeHeap()) +
-                        ",\"uptime\":" + String(millis() / 1000) + ",\"battery\":" + batteryJson() + "}";
+                        ",\"uptime\":" + String(millis() / 1000) + ",\"battery\":" + batteryJson() + ",\"storage\":"+recordingStoreStatus()+",\"recording\":"+(micActive?"true":"false")+",\"buffered_seconds\":"+String(audioMicQueued()/32000)+"}";
             ws.sendTXT(st);
         }
         vTaskDelay(pdMS_TO_TICKS(micActive ? 2 : 5));
@@ -725,7 +755,10 @@ static void netTask(void *) {
 }
 
 void netBegin() {
+    meetingPacket=(uint8_t*)ps_malloc(8+4+ADPCM_BLOCK/2);
+    meetingBlock=(int16_t*)ps_malloc(ADPCM_BLOCK*sizeof(int16_t));
     outQ = xQueueCreate(16, sizeof(String *));
+    Preferences events;events.begin("wappai-events",false);events.end();
     prefs.begin("net", false);
     url = prefs.getString("url", SERVER_URL);
     if (!url.startsWith("wss://")) url = SERVER_URL;     // a saved LAN address is handled by the fallback below

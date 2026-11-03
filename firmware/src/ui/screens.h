@@ -52,7 +52,7 @@ void useText(LGFX_Sprite &s);                     // back to the Hebrew text fon
 void drawPage(LGFX_Sprite &s, int page, const Snap &d, uint32_t now, int haScroll);
 void drawCard(LGFX_Sprite &s, const Snap &d, uint32_t now);
 // meeting transcription screen: title (once known), elapsed time, mic level, offline note, end button
-void drawMeeting(LGFX_Sprite &s, const char *title, uint32_t elapsedMs, float level, bool online, size_t bufferedBytes, uint32_t now);
+void drawMeeting(LGFX_Sprite &s, const char *title, uint32_t elapsedMs, float level, bool online, size_t bufferedBytes, uint32_t now, uint32_t limitSeconds=18000);
 void drawToast(LGFX_Sprite &s, const char *text);
 void drawDots(LGFX_Sprite &s, int page);
 int hit(int x, int y);                           // button under (x, y) from the last drawn screen, or B_NONE

@@ -142,6 +142,9 @@ def register(app,context):
     studio=PipStudio(store,require,ctx.hub,emit);studio.register(app)
     from .voice import settings as voice_settings
     voice_settings.register(app,require)
+    from . import meetings_api, notifications
+    notifications.service.routes(app,require)
+    meetings_api.register(app,require,ctx,emit)
     @app.post('/v1/web/login')
     async def web_login(request:Request):
         web_auth.guard(request)

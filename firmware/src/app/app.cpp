@@ -243,7 +243,8 @@ static void stopRecording() {
 }
 
 static void startMeeting() {
-    if (manualLocked || meeting || recording) return;
+    if(!netMeetingReady()){strlcpy(sub,"אין די זיכרון להקלטת פגישה",sizeof sub);subUntil=millis()+6000;return;}
+    if (manualLocked || meeting || recording || netRecordingPending() || !model.server) return;
     wake(true);
     showFace();
     audioStop();
@@ -270,7 +271,7 @@ static void stopMeeting() {
     ringMode = RING_THINK;
     ringT0 = millis();
     emotionHoldUntil = millis() + 60000;
-    snprintf(sub, sizeof sub, "מסכם את הפגישה…");
+    snprintf(sub, sizeof sub, "שומר את ההקלטה…");
     subUntil = millis() + 8000;
     modelLock(); model.recording = false; modelUnlock();
 }
@@ -397,7 +398,13 @@ static void pollInputs(uint32_t now) {
         else { netSend("{\"type\":\"interrupt\"}"); startRecording(); }
     }
     if (recording && since(now, recT0) > MAX_REC_MS) stopRecording();
-    if (meeting && since(now, meetingT0) > MAX_MEETING_MS) stopMeeting();
+    if (meeting && (since(now, meetingT0) > MAX_MEETING_MS || audioMicCapacityStop())) {
+        if(audioMicCapacityStop()){
+            netSend(String("{\"type\":\"event\",\"name\":\"recording_gap\",\"bytes\":")+String(audioMicDropped())+"}");
+        }
+        stopMeeting();
+        if(audioMicCapacityStop()){strlcpy(sub,"הזיכרון מלא. ההקלטה נשמרה",sizeof sub);subUntil=millis()+15000;}
+    }
 
     // touch
     lgfx::touch_point_t tp;
@@ -634,9 +641,7 @@ static void applyModel(uint32_t now) {
         if (alarmLabel[0]) snprintf(sub, sizeof sub, "הטיימר הסתיים: %s", alarmLabel);
         else snprintf(sub, sizeof sub, "הטיימר הסתיים!");
         subUntil = now + 30000;
-        char m[128];
-        snprintf(m, sizeof m, "{\"type\":\"event\",\"name\":\"timer_done\",\"label\":\"%s\"}", alarmLabel);
-        netSend(m);
+        netTimerDone();
     }
     if (alarmOn) {
         if (since(now, lastAlarmBeep) > 2000) { lastAlarmBeep = now; audioAlarm(); }
@@ -685,7 +690,7 @@ static void updatePower(uint32_t now) {
     if (power == P_DIM && idle < (int32_t)model.dimMs) { power = P_ACTIVE; setBrightness(activeBrightness()); }
     if (power == P_DIM && idle > (int32_t)model.offMs) screenOff(now);    // a long meeting records with the screen off
     uint32_t deepAfter = model.deepMs;
-    if (power == P_OFF && !model.assetBusy && !bat.usb && !meeting && !audioPlaying() && since(now, offSince) > deepAfter) {
+    if (power == P_OFF && !model.assetBusy && !bat.usb && !meeting && !netRecordingPending() && !audioPlaying() && since(now, offSince) > deepAfter) {
         modelLock();
         bool soon = model.timerOn && (int32_t)(model.timerEnd - now) < (int32_t)deepAfter;
         modelUnlock();
@@ -860,7 +865,7 @@ static void renderScreens(uint32_t now) {
         if (need) {
             char title[96];
             modelLock(); strlcpy(title, model.meetingTitle, sizeof title); modelUnlock();
-            drawMeeting(scr, title, since(now, meetingT0), audioMicLevel(), d.server, audioMicQueued(), now);
+            drawMeeting(scr, title, since(now, meetingT0), audioMicLevel(), d.server, audioMicQueued(), now, model.meetingLimitSeconds);
             lastM = now;
         }
     } else if (need) {

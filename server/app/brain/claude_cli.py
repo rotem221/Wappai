@@ -188,7 +188,7 @@ async def oneshot(prompt: str, model: str = "haiku", timeout: float = 180, syste
     env = dict(os.environ)
     env.pop("ANTHROPIC_API_KEY", None)
     args = [config.CLAUDE_BIN, "-p", "--output-format", "text", "--model", model,
-            "--disallowedTools", BLOCKED_TOOLS + " WebSearch WebFetch"]
+            "--tools", "", "--mcp-config", '{"mcpServers":{}}', "--strict-mcp-config"]
     if system:
         args += ["--system-prompt", system]
     try:

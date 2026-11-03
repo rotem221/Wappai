@@ -54,6 +54,7 @@ final class WappaiUITests:XCTestCase {
     }
     func testVoiceSetupAndLiveTranscriptSetting() {
         app.buttons["הגדרות"].tap()
+        for _ in 0..<4 {if app.switches["תמלול בזמן הדיבור"].exists{break};app.swipeUp()}
         XCTAssertTrue(app.switches["תמלול בזמן הדיבור"].waitForExistence(timeout:5))
         app.buttons["קול ודיבור"].tap()
         let provider=app.buttons["voiceProvider"]
@@ -76,4 +77,15 @@ final class WappaiUITests:XCTestCase {
         let screenshot=XCTAttachment(screenshot:app.screenshot());screenshot.name="Firmware update settings";screenshot.lifetime = .keepAlways;add(screenshot)
     }
 
+
+    func testMeetingLibraryAndTranscript() throws {
+        let app=XCUIApplication()
+        app.launchArguments=["--qa-ui-fixture","--qa-ui-reset","--show-meetings"]
+        app.launch()
+        XCTAssertTrue(app.staticTexts["תכנון ההשקה"].waitForExistence(timeout:10))
+        let library=XCTAttachment(screenshot:app.screenshot());library.name="Meeting library";library.lifetime = .keepAlways;add(library)
+        app.staticTexts["תכנון ההשקה"].tap()
+        XCTAssertTrue(app.staticTexts["תמלול"].waitForExistence(timeout:5))
+        let detail=XCTAttachment(screenshot:app.screenshot());detail.name="Meeting transcript";detail.lifetime = .keepAlways;add(detail)
+    }
 }

@@ -13,3 +13,8 @@ void netResetWifi();
 String netSavedSsid();
 
 void netRetryWifi();
+
+bool netRecordingPending();
+bool netMeetingReady();
+
+void netTimerDone();

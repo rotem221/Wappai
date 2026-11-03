@@ -25,6 +25,7 @@ def decode(block: bytes) -> bytes:
     if len(block) < 5:
         return b""
     pred, idx = struct.unpack_from("<hB", block, 0)
+    if idx>88:raise ValueError("Invalid ADPCM step index")
     out = array.array("h")
     app = out.append
     D, I = _DELTA, IDX

@@ -26,6 +26,11 @@ wappai.store.db.execute('UPDATE sessions SET title=? WHERE id=?',('היום של
 wappai.store.message(sid,'user','בוא נתכנן את היום ביחד')
 wappai.store.message(sid,'assistant','בשמחה! מה הכי חשוב לך להספיק היום?')
 wappai.store.db.commit()
+# Safe illustrative meeting fixture; never imports private meeting content.
+from app.tools import meeting as meeting_module
+sample=meeting_module.DIR/'20261104-100000';sample.mkdir(exist_ok=True)
+(sample/'meta.json').write_text(json.dumps({'id':'20261104-100000','title':'תכנון ההשקה','started':'2026-11-04T10:00:00','state':'done','seconds':1440,'summary':'ההשקה מתוכננת ליום חמישי.\nדנה תבדוק את התקציב עד יום שני.','chars':100,'chunks':[],'chunk_from':0},ensure_ascii=False))
+(sample/'transcript.txt').write_text('[0:00:02] נתחיל בתכנון ההשקה.\n[0:00:08] דנה תבדוק את התקציב עד יום שני.')
 # Job compiler remains off in this fixture; preview approval still uses the production API.
 def launch(jid,stage):
     job=wappai.studio.get(jid)

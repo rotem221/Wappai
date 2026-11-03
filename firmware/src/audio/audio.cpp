@@ -1,5 +1,6 @@
 // Audio: ES8311 (speaker) + ES7210 (mics) over I2S at 16 kHz. Adapted from Pana (MIT).
 #include "audio.h"
+#include "storage/recording_store.h"
 #include "board.h"
 #include <ESP_I2S.h>
 #include <freertos/ringbuf.h>
@@ -24,6 +25,8 @@ static portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 static const size_t MIC_RING_BYTES = 3 * 1024 * 1024;
 static RingbufHandle_t micRing = nullptr;
 static volatile bool micOn = false;
+static volatile size_t micDropped=0;
+static volatile bool micCapacityStop=false;
 static volatile int micCh = 0;          // 0 = left (MIC1), 1 = right (MIC2), 2 = average of both
 static volatile float micLvl = 0;
 
@@ -160,11 +163,15 @@ static void micTask(void *) {
         }
         float rms = sqrt(acc / n) / 32768.0f;
         micLvl = min(1.0f, rms * 12.f);
-        xRingbufferSend(micRing, mono, n * 2, 0);            // si la red va lenta, se pierde
+        bool saved=recordingStoreActive()?recordingStoreWrite((uint8_t*)mono,n*2):xRingbufferSend(micRing,mono,n*2,0)==pdTRUE;
+        if(!saved){micDropped+=n*2;micCapacityStop=true;micOn=false;}
+        // Stop before exhausting the RAM buffer; preserve captured audio for reconnection.
+        if(!recordingStoreActive() && xRingbufferGetCurFreeSize(micRing)<32000*4){micCapacityStop=true;micOn=false;}
     }
 }
 
 bool audioBegin() {
+    recordingStoreBegin();
     pinMode(PIN_PA, OUTPUT);
     digitalWrite(PIN_PA, !HIGH);
     playBuf = (int16_t *)ps_malloc(PLAY_CAP * 2);
@@ -234,7 +241,8 @@ bool audioPlaying() { return playing || open_; }
 float audioMouth() { return mouth; }
 
 void audioMic(bool on) {
-    if (on) {                                 // vacía lo viejo
+    if (on) {
+        micDropped=0;micCapacityStop=false;       // start a fresh capture
         size_t sz;
         void *it;
         while ((it = xRingbufferReceiveUpTo(micRing, &sz, 0, MIC_RING_BYTES))) vRingbufferReturnItem(micRing, it);
@@ -242,12 +250,16 @@ void audioMic(bool on) {
     micOn = on;
 }
 
+size_t audioMicDropped(){return micDropped;}
+bool audioMicCapacityStop(){return micCapacityStop;}
 size_t audioMicQueued() {
+    if(recordingStoreActive())return recordingStoreQueued();
     UBaseType_t freeB = xRingbufferGetCurFreeSize(micRing);
     return MIC_RING_BYTES > freeB ? MIC_RING_BYTES - freeB : 0;
 }
 
 size_t audioMicPop(uint8_t *dst, size_t max) {
+    if(recordingStoreActive())return recordingStoreRead(dst,max);
     size_t sz = 0;
     void *it = xRingbufferReceiveUpTo(micRing, &sz, 0, max);
     if (!it) return 0;

@@ -80,6 +80,7 @@ struct Model {
     // meeting transcription (server -> board): id for resuming after a Wi-Fi drop, title once the topic is known
     char meetingId[24] = "";
     char meetingTitle[96] = "";
+    uint32_t meetingLimitSeconds=18000;
     bool meetingNew = false;
     // short message at the bottom ("couldn't change the device")
     char toast[96] = "";

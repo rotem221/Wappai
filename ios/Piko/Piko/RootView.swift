@@ -10,6 +10,8 @@ struct RootView:View {
     @AppStorage("wappai.pip.hidden") private var pipHidden=false
     @State private var draft=""
     @State private var showSettings=false
+    @State private var showMeetings=false
+    @ObservedObject private var notifications=AppNotifications.shared
     @State private var showSessions=false
     @State private var showPips=false
     @State private var showPairing=false
@@ -73,6 +75,10 @@ struct RootView:View {
             }
             .safeAreaInset(edge:.bottom,spacing:0){if client.paired {composer}}
             .sheet(isPresented:$showSettings){settings}
+            .sheet(isPresented:$showMeetings){NavigationStack{MeetingLibrary(client:client).toolbar{ToolbarItem(placement:.confirmationAction){Button("סיום"){showMeetings=false}}}}}
+            .onReceive(NotificationCenter.default.publisher(for:Notification.Name("WappaiPushToken"))){_ in Task{await notifications.sync(client:client)}}
+            .onChange(of:notifications.openMeetings){_,open in if open{showSettings=false;showMeetings=true;notifications.openMeetings=false}}
+            .task(id:client.paired){if client.paired {await notifications.sync(client:client)}}
             .sheet(isPresented:$showPips){PipGallery(client:client)}
             .sheet(item:$studioPip){pip in ExpressionStudio(client:client,pip:pip)}
             .sheet(item:$previewHardware){hardware in NavigationStack{DeviceShowroom(hardware:hardware)}}
@@ -93,6 +99,7 @@ struct RootView:View {
                 if args.contains("--show-pips"){showPips=true}
                 if args.contains("--show-studio"){studioPip=client.pips.first}
                 if args.contains("--show-settings"){showSettings=true}
+                if args.contains("--show-meetings"){showMeetings=true}
                 if args.contains("--show-sidebar"){showSessions=true}
                 if let i=args.firstIndex(of:"--preview-model"),args.count>i+1{previewHardware=WappaiHardware(rawValue:args[i+1])}
                 #endif
@@ -144,6 +151,10 @@ struct RootView:View {
                 Button("רשת Wi‑Fi ומכשיר"){bluetooth.beginSetup();showSettings=false;showPairing=true}
                 Button("דמויות ויצירת Pip"){showSettings=false;showPips=true}
             }
+            Section("פגישות והתראות"){
+                NavigationLink("הקלטות, תמלול וסיכומים"){MeetingLibrary(client:client)}
+                NavigationLink("התראות טיימרים ופגישות"){Form{NotificationSettings(client:client)}.navigationTitle("התראות")}
+            }
             Section("שיחה"){
                 ForEach(client.providers){p in Button("שיחה חדשה עם \(p.id == "codex" ? "Codex":"Claude Code")"){Task{await client.newSession(p.id);showSettings=false}}.disabled(!p.available || client.busy)}
                 NavigationLink("קול ודיבור"){VoiceSettings(client:client)}
@@ -160,6 +171,11 @@ struct RootView:View {
             Section {
                 NavigationLink("מסך, קול וסוללה"){Form{Section{DeviceSliders(client:client)};Section{PowerSettings(client:client)}}.navigationTitle("המכשיר")}
                 NavigationLink("פרטי חיבור"){Form{Section{HubLogin(client:client)};Section{if let version=client.device.fw_version{LabeledContent("גרסה",value:version)};NavigationLink("דגמי Wappai"){DeviceShowroom()}}}.navigationTitle("פרטי חיבור")}
+            }
+            Section("אודות ופרטיות") {
+                Link("מדיניות פרטיות",destination:URL(string:"https://wappai-companion.rotem221.chatgpt.site/privacy.html")!)
+                Link("תנאי שימוש",destination:URL(string:"https://wappai-companion.rotem221.chatgpt.site/terms.html")!)
+                Link("עזרה ותמיכה",destination:URL(string:"https://github.com/rotem221/Wappai/issues")!)
             }
             Section{Text("רשתות Wi‑Fi בתדר 2.4GHz. במצב שינה עמוקה המכשיר אינו זמין מרחוק; BOOT מעיר אותו.").font(.footnote).foregroundStyle(.secondary)}
         }.navigationTitle("הגדרות").toolbar{ToolbarItem(placement:.confirmationAction){Button("סיום"){showSettings=false}}}}

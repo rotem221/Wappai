@@ -1,3 +1,4 @@
+import {meetingLibrary} from './meetings.js';
 import { PipPlayer } from "./pip-player.js";
 const $ = (s) => document.querySelector(s),
   esc = (s) =>
@@ -421,6 +422,7 @@ async function openPanel(type) {
   try {
     if (type === "pips") await pips();
     else if (type === "voice") await voice();
+    else if (type === "meetings") await meetingLibrary({api,panel,esc,notice});
     else settings();
   } catch (e) {
     notice(e.message);

@@ -1,6 +1,7 @@
 import SwiftUI
 @main
 struct WappaiApp:App {
+    @UIApplicationDelegateAdaptor(WappaiAppDelegate.self) var appDelegate
     init(){
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("--qa-ui-fixture") && ProcessInfo.processInfo.arguments.contains("--qa-ui-reset") {
