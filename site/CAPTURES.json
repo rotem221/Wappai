@@ -18,5 +18,20 @@
     "web-chat.png": "Original Web UI QA capture with example data",
     "ios-voices.png": "Original iOS voice-settings capture"
   },
-  "future_models": "1.8 and 2.16 are explicitly labeled previews of the 1.75C UI; not validated firmware."
+  "future_models": "1.8 and 2.16 are explicitly labeled previews of the 1.75C UI; not validated firmware.",
+  "animated_studio": {
+    "renderer": "screen-demo.js",
+    "artwork": "Original Wappai pixel artwork, motion timings and spiral-eye anchors",
+    "scenes": [
+      "talk",
+      "thinking",
+      "weather",
+      "timer",
+      "home",
+      "dizzy"
+    ],
+    "data": "Illustrative presentation data; no service calls or physical device actions",
+    "models": "Automatic 12-second rotation, scene changes every 5 seconds, manual controls and pause",
+    "screenshots": "Original device/iOS/Web images retained separately in the gallery"
+  }
 }
