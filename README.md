@@ -7,7 +7,7 @@
 
 Wappai puts an expressive pixel companion on a small touchscreen. Hold BOOT to talk, release to send, and continue the same conversation on iPhone or in your browser. Run the brain on your own Hub and choose the tools and voices it uses.
 
-**[Get started](docs/GETTING_STARTED.md)** · **[Downloads](https://github.com/rotem221/Wappai/releases)** · **[Project site](https://wappai-companion.rotem221.chatgpt.site)**
+**[מדריך מלא בעברית](docs/END_USER_GUIDE.he.md)** · **[Get started](docs/GETTING_STARTED.md)** · **[Downloads](https://github.com/rotem221/Wappai/releases)** · **[Project site](https://wappai-companion.rotem221.chatgpt.site)**
 
 ## What's inside
 
@@ -16,6 +16,10 @@ Wappai puts an expressive pixel companion on a small touchscreen. Hold BOOT to t
 - A native iOS app and responsive RTL Web chat: synchronized conversations, themes, floating character, device settings and Bluetooth Wi-Fi onboarding.
 - Battery-aware rendering, inactivity dimming, persistent lock, hold-to-talk, and configurable shake response.
 - Personal Hub integrations such as weather, timers and optional Home Assistant, with room-specific control feedback.
+
+## Current source preview (1.1.0-dev)
+
+The current source adds a meeting library in iOS/Web, acknowledged audio chunks with reconnect recovery, optional private S3 archiving, opt-in APNs notifications, and a source-based desktop Hub launcher. See the [architecture](docs/MEETINGS_ARCHITECTURE.md), [validation report](docs/VALIDATION-2026-11-04.md), and [App Store gates](docs/APP_STORE_READINESS.md). These changes are not included in the older downloadable release below. SD-capable boards are still withheld pending board-specific implementation and physical validation. Actual APNs and cloud delivery require your configured services; no publisher Push relay is included.
 
 ## Release status
 
