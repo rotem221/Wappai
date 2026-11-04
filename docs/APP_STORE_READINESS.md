@@ -11,6 +11,7 @@ This is a release gate, **not a claim of Apple approval**. Do not upload a devel
 - Removed broad arbitrary-load permission from WKWebView configuration; native Hub connection requires HTTPS.
 - `PrivacyInfo.xcprivacy`: no tracking, app-functionality data declarations and UserDefaults required-reason API entry. Audit the final archive/SDK manifests and App Store privacy answers together; manifest entries do not replace the App Store Connect privacy questionnaire.
 - Voice/image/cloud credentials remain on the owner's Hub, not in the app bundle. App tokens are in Keychain. Debug test fixtures do not run in Release.
+- Personal deployment, 4 November 2026: explicit Push-enabled development provisioning was generated, the signed build was installed and launched on a physical iPhone, and dedicated topic-restricted Sandbox and Production keys were configured on the owner's Hub. See [activation verification](APNS_ACTIVATION_2026-11-04.md). This does not establish actual delivery or App Store distribution readiness.
 
 ## Required before submission
 
