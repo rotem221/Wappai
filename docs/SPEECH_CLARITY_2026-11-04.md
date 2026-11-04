@@ -31,6 +31,14 @@ This is a two-sample comparison, with variable cloud/agent latency and different
 
 An attempted shorter recognizer tail padding truncated the final words of a sample. It was rejected; the existing padding remains intact.
 
+## Physical speaker follow-up
+
+After the device was reconnected by USB, the `ws-s3-175c` was detected by the Hub with 91% battery and USB charging. The first serial-monitored request did not play: the board had restarted (uptime zero) and was still joining Wi-Fi. The repeat waited for both Wi-Fi and Hub connectivity before sending the same ready-made Hebrew sentence.
+
+The speaker task reported playback start **0.523 seconds** after the HTTP request began. Serial telemetry confirmed `playing=1` during playback, then `playing=0`, an idle expression, and continued Wi-Fi/Hub connectivity. The microphone receiver remained off during this output-only check. The board also entered its existing screen-off/80 MHz idle state while awaiting the connection and woke for playback.
+
+This verifies delivery to the physical playback task and completion, not acoustic clarity or freedom from audible artifacts. It excludes microphone capture, transcription and model reasoning, so it must not be compared directly with the full-turn latency table above. No firmware or power settings were changed. Subjective speaker quality and a fresh physical BOOT/microphone conversation still require a listening test; battery endurance was not measured.
+
 ## Restore points and references
 
 - Private Git tag: `backup/pre-speech-clarity-20261104`.
