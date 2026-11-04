@@ -73,7 +73,21 @@ class PipStudio:
         token=os.environ.get('WAPPAI_CODEX_BRIDGE_TOKEN')
         if not token:raise RuntimeError('חיבור יצירת התמונות של Codex אינו מוגדר')
         async with httpx.AsyncClient(timeout=httpx.Timeout(440,connect=10)) as client:
-            response=await client.post('http://127.0.0.1:18773/pip-image',headers={'Authorization':'Bearer '+token},json={'prompt':prompt,'reference':base64.b64encode(reference).decode() if reference else None})
+            headers={'Authorization':'Bearer '+token}
+            try:
+                # A stale SSH forward accepts TCP but never answers. Check it
+                # before committing to the long image-generation timeout.
+                capability=await client.get('http://127.0.0.1:18773/pip-image/capability',headers=headers,timeout=15)
+                if capability.status_code!=200:raise RuntimeError('חיבור יצירת התמונות אינו זמין. ודאו שמחשב ה־Hub ער ומחובר ונסו שוב.')
+                if not capability.json().get('available'):raise RuntimeError('יצירת תמונות אינה זמינה בחשבון Codex המחובר.')
+            except (httpx.HTTPError,ValueError):
+                raise RuntimeError('אין חיבור למחשב שמייצר את הדמות. ודאו שהוא ער ומחובר לרשת ונסו שוב; התמונה והתיאור נשמרו.') from None
+            try:
+                response=await client.post('http://127.0.0.1:18773/pip-image',headers=headers,json={'prompt':prompt,'reference':base64.b64encode(reference).decode() if reference else None})
+            except httpx.TimeoutException:
+                raise RuntimeError('יצירת התמונה לא הסתיימה בזמן. התמונה והתיאור נשמרו; אפשר לנסות שוב.') from None
+            except httpx.HTTPError:
+                raise RuntimeError('החיבור למחשב היוצר נותק. התמונה והתיאור נשמרו; אפשר לנסות שוב כשהחיבור חוזר.') from None
             if response.status_code!=200:raise RuntimeError('Codex לא השלים את התמונה. בדקו חיבור ומכסת יצירת תמונות ונסו שוב.')
             return response.content
     def launch(self,jid,kind):

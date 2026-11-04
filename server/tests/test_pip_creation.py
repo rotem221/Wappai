@@ -336,3 +336,23 @@ def test_completed_preview_and_full_pack_emit_notifications_only_on_success(stud
     s.image=broken;asyncio.run(s.run(failed['id'],'preview'))
     assert s.get(failed['id'])['status']=='failed'
     assert svc.db.execute('SELECT COUNT(*) FROM outbox').fetchone()[0]==2
+
+@pytest.mark.parametrize('failure',['offline','timeout','generation_timeout','unavailable'])
+def test_image_bridge_failure_is_actionable(studio,monkeypatch,failure):
+    import httpx
+    from app import pip_creation
+    s,_,_=studio;monkeypatch.setenv('WAPPAI_CODEX_BRIDGE_TOKEN','private-test-token')
+    calls=[];real_client=httpx.AsyncClient
+    def respond(request):
+        calls.append(request.method)
+        if request.method=='GET':
+            assert request.extensions['timeout']['read']==15
+            if failure=='offline':raise httpx.ConnectError('sensitive upstream details',request=request)
+            if failure=='timeout':raise httpx.ReadTimeout('sensitive upstream details',request=request)
+            return httpx.Response(200,json={'available':failure!='unavailable'})
+        raise httpx.ReadTimeout('sensitive upstream details',request=request)
+    monkeypatch.setattr(pip_creation.httpx,'AsyncClient',lambda **kw:real_client(transport=httpx.MockTransport(respond),**kw))
+    with pytest.raises(RuntimeError) as error:asyncio.run(s.image('test'))
+    assert 'sensitive' not in str(error.value) and 'private-test-token' not in str(error.value)
+    assert calls==(['GET','POST'] if failure=='generation_timeout' else ['GET'])
+    assert 'נשמרו' in str(error.value) or failure=='unavailable'

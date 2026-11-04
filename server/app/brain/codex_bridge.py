@@ -52,7 +52,7 @@ async def pip_image(request:Request):
         try:
             while not worker.done():
                 await asyncio.wait({worker},timeout=1)
-                if await request.is_disconnected():worker.cancel();raise HTTPException(499)
+                if await request.is_disconnected():worker.cancel();raise HTTPException(499,'Image request disconnected')
             return Response(await worker,media_type='image/png')
         except (RuntimeError,TimeoutError) as error:raise HTTPException(502,str(error))
         finally:
