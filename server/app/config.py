@@ -27,12 +27,12 @@ HOST = env("HOST", "0.0.0.0")
 PORT = int(env("PORT", "8770"))
 DEVICE_TOKEN = env("DEVICE_TOKEN")              # shared secret for devices and the simulator
 PUBLIC_URL = env("PUBLIC_URL", "")              # e.g. https://piko.tailXXXX.ts.net
-LAN_IP = env("LAN_IP", "192.168.1.202")
+LAN_IP = env("LAN_IP", "192.168.1.10")
 TZ = env("TZ", "Asia/Jerusalem")
 
 # character
 NAME = env("COMPANION_NAME", "ואפאי")
-OWNER = env("COMPANION_OWNER", "רותם")
+OWNER = env("COMPANION_OWNER", "")
 LANG = env("COMPANION_LANG", "he")
 STT_LANGUAGE = env("STT_LANGUAGE", "auto")
 RETAIN_DEBUG_AUDIO = env("RETAIN_DEBUG_AUDIO", "0") == "1"
@@ -66,7 +66,7 @@ LON = float(env("LON", "34.7818"))
 CITY = env("CITY", "תל אביב")
 
 # Home Assistant (optional; used through Claude's MCP)
-HA_URL = env("HA_URL", "http://192.168.1.102:8123")
+HA_URL = env("HA_URL", "")
 HA_TOKEN = env("HA_TOKEN")
 
 FIRMWARE_DIR = Path(env("FIRMWARE_DIR", str(ROOT / "firmware_dist")))
