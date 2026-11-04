@@ -160,6 +160,7 @@ async def show_card(attrs: dict, ttl: int = 12) -> bool:
 
 
 async def converse(text: str, heard: bool = True, on_done=None, t0: float | None = None):
+    from .voice.grammar import self_reference
     utt = uuid.uuid4().hex[:8]
     t0 = t0 or time.time()
     marks: dict[str, float] = {}              # latency timeline of this turn, logged once the first audio is out
@@ -168,6 +169,7 @@ async def converse(text: str, heard: bool = True, on_done=None, t0: float | None
             await hub.emit({"type": "heard", "text": text})
         previous = wappai.store.rows('SELECT text FROM messages WHERE session_id=? AND role=? ORDER BY created DESC,rowid DESC LIMIT 1', (wappai.active, 'assistant'))
         preferences.remember(text, previous[0]['text'] if previous else '')
+        character_gender = config.ASSISTANT_GENDER
         history = wappai.conversation_context(text)
         ask_address = config.USER_ADDRESS == 'auto' and preferences.QUESTION not in history
         smart_home = home_requested(text)
@@ -268,6 +270,7 @@ async def converse(text: str, heard: bool = True, on_done=None, t0: float | None
                         shown.add(w)
                         await show_card(e.attrs)
                 elif e.kind == "sentence":
+                    e.value = self_reference(e.value, character_gender)
                     marks.setdefault("first_sentence", time.time() - t0)
                     spoken.append(e.value)
                     chunks: asyncio.Queue = asyncio.Queue(maxsize=24)
@@ -531,6 +534,7 @@ async def ws_endpoint(ws: WebSocket):
                 finish_meeting(m_)
             elif t == "ptt_start":
                 hub.interrupt()
+                wappai.prepare_brain()
                 rec = bytearray()
                 if sess is not None:
                     sess.cancel()
@@ -663,6 +667,7 @@ async def startup():
 async def close_voice():
     from .voice import elevenlabs
     await elevenlabs.close()
+    await wappai.close_preparation()
 
 
 def _check(request: Request):

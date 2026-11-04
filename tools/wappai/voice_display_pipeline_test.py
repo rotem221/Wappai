@@ -43,6 +43,19 @@ async def run():
     assert not any(e.get('text')==main.preferences.QUESTION for e in events)
     events.clear();await main.converse('מה מזג האוויר?',heard=False)
     assert any(e.get('kind')=='weather' for e in events)
+    # Correction must reach both TTS and displayed/stored say events.
+    captured=[]
+    async def corrected_speech(text,*a,**kw):
+        captured.append(text);yield bytes(2048)
+    main.tts.stream=corrected_speech
+    class QuestionBrain:
+        async def ask(self,*a):yield '[happy]עכשיו אני שואל: האם את מוכנה?'
+    main.wappai.current_brain=lambda:QuestionBrain()
+    main.config.ASSISTANT_GENDER='neutral'
+    events.clear();await main.converse('שאל אם אפשר לצאת',heard=False)
+    displayed=[e['text'] for e in events if e['type']=='say']
+    assert displayed==captured and 'אני שואל' not in ' '.join(displayed)
+    assert 'האם את מוכנה?' in ' '.join(displayed)
     import types
     started=asyncio.Event();both=asyncio.Event()
     async def recognize(pcm):

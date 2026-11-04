@@ -49,6 +49,7 @@ store=Store(config.DATA_DIR/'wappai.sqlite3')
 latest=store.rows("SELECT id FROM sessions WHERE id=(SELECT value FROM app_meta WHERE key='active_session')") or store.rows('SELECT id FROM sessions ORDER BY created DESC LIMIT 1')
 active=latest[0]['id'] if latest else store.session()
 clients=set(); agents={}; partial={}; ctx=None; studio=None
+_preparing={}
 
 def require(request):
     token=request.headers.get('authorization','').removeprefix('Bearer ')
@@ -86,6 +87,25 @@ def current_brain():
             from .brain.claude_cli import ClaudeCLI
             agents[active]=ClaudeCLI()
     return agents[active]
+
+def prepare_brain():
+    """Overlap local startup with capture; never issue a speculative model request."""
+    prepare = getattr(current_brain(), 'prepare', None)
+    if prepare is None or (active in _preparing and not _preparing[active].done()):
+        return
+    async def run():
+        try:
+            await prepare()
+        except Exception:
+            # ask() retries normally and supplies the existing user-visible error.
+            import logging
+            logging.getLogger(__name__).warning('Brain preparation unavailable; retry on turn')
+    _preparing[active] = asyncio.create_task(run())
+
+async def close_preparation():
+    tasks=list(_preparing.values());_preparing.clear()
+    for task in tasks: task.cancel()
+    await asyncio.gather(*tasks,return_exceptions=True)
 
 async def emit(body):
     if body.get('type')=='transcript.partial':
@@ -226,6 +246,10 @@ def register(app,context):
                 if not remaining:store.db.execute('INSERT INTO sessions VALUES (?,?,?,?)',(next_active,'שיחה חדשה',rows[0]['provider'],time.time()))
                 store.db.execute("INSERT INTO app_meta VALUES ('active_session',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",(next_active,))
         active=next_active
+        preparation=_preparing.pop(sid,None)
+        if preparation:
+            preparation.cancel()
+            await asyncio.gather(preparation,return_exceptions=True)
         agent=agents.pop(sid,None)
         for message in mids:partial.pop(message['id'],None)
         await emit({'type':'session.deleted','deleted_session_id':sid,'active_session':active})

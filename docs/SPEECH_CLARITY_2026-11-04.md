@@ -4,7 +4,7 @@
 
 - Added independent user address and character self-reference preferences in iOS and Web voice settings. Unknown address preferences use neutral wording and prompt for a choice after the answer; meeting-start announcements are exempt. The question is not repeated while it remains in the current conversation history.
 - A direct reply such as “נקבה”, “בלשון זכר”, or “אני מעדיפה בלשון נקבה בבקשה” after that question is persisted. Explicit commands such as “פנה אליי בלשון זכר” can also change it. Names, voice identity, quoted text and the gender used to address the assistant do not implicitly set the user's preference.
-- Preferences are injected on every turn. Claude's process is renewed on the next turn when they change, so its original system instructions cannot retain a conflicting preference. Durable session history is still injected after renewal.
+- Preferences are injected on every turn. The follow-up below replaces preference-triggered Claude restarts with a stable system policy and current per-turn preferences. Durable session history remains injected for every turn and for idle/turn-limit recovery.
 - Neutral phrasing replaces gendered built-in speech errors and the voice preview. Ordinary answers no longer receive a forced excited audio tag. Hebrew text supplies `language_code=he`; English-only replies do not force Hebrew.
 
 ## Latency work
@@ -53,11 +53,25 @@ Three turns used a temporary Claude conversation. The first asked the assistant 
 
 Times use the ESP32's own millisecond timestamps for `ptt: stop` and `spk: on`. Playback events were correlated with the first received answer PCM to exclude both the release chirp and local thinking sounds. An initial diagnostic calculation mistakenly selected the chirp; the table above is the corrected speech measurement. These measurements include microphone buffering, network delivery, recognition, model generation, TTS and device playback buffering. They are not comparable to the 0.523-second ready-text speaker check.
 
-Recognition retained the object and the follow-up question in all three turns. Context survived both a follow-up and the Claude process refresh triggered by changing the preference. Server recognition timing was 1.12–1.33 seconds; logged first-token timing was 4.72–7.41 seconds from the server turn timer (which includes recognition). Model response time was the largest measured wait, with additional transport/buffering variability. Three samples are insufficient for a percentile or general latency guarantee.
+Recognition retained the object and the follow-up question in all three turns. In this baseline, context survived both a follow-up and the Claude process refresh then triggered by changing the preference. Server recognition timing was 1.12–1.33 seconds; logged first-token timing was 4.72–7.41 seconds from the server turn timer (which includes recognition). Model response time was the largest measured wait, with additional transport/buffering variability. Three samples are insufficient for a percentile or general latency guarantee.
 
 The requested masculine/feminine *user address* checks passed. A separate limitation was observed: with character self-reference set to neutral, the masculine-address response included “אני שואל”. The user-facing address was correct, but neutral character self-reference is not fully reliable from prompting alone; do not interpret this test as complete grammatical compliance in every response.
 
 The temporary conversation was deleted, original active conversation and both voice preferences restored and verified via the live API, and the Mac's original muted volume restored. The device remained online with recording off; serial telemetry confirmed the microphone receiver returned to `rx=0`. No firmware, power policy or voice selection was changed. The test validates controlled acoustic input, not the user's natural voice in a noisy room or battery endurance.
+
+## Neutral self-reference and latency follow-up
+
+The previous physical test exposed “אני שואל” with a neutral character setting. The follow-up strengthens the neutral persona and adds narrowly scoped, unquoted self-reference corrections before the sentence is sent to TTS, captions and durable conversation storage. Question introductions become “השאלה שלי היא”; affirmative “אני זוכר/זוכרת” becomes “זכרתי”. User address, quoted wording and negation are preserved. This is a targeted guard for observed failures, not a general Hebrew grammar guarantee.
+
+Claude now uses a stable system policy that delegates the two speech preferences to the current turn's application instructions. Changing a preference no longer restarts its process or discards its native context. The same model, tool permissions, durable conversation injection, idle timeout and turn limit remain in use. Local process startup overlaps microphone capture without sending a model request, speculative answer or synthetic conversation turn. Preparation uses the normal conversation lock and is cancelled when its session is deleted or the service stops.
+
+120 server tests passed, including preservation of quoted/negative text, current preference injection across consecutive turns in one process, no prompt sent during preparation, and continued idle-expiry reset. The isolated production pipeline confirmed identical normalized text in TTS and displayed `say` events, with the existing appliance/weather, onboarding and English-recognition regressions passing.
+
+The same two acoustic fixtures at the same Mac volume were first rerun on the device: reply onset was 6.067 / 3.868 / 5.217 seconds, compared with 8.390 / 5.284 / 8.063 seconds in the baseline. Context and masculine/feminine user address survived, but “אני זוכר” remained in that intermediate version and was then covered by the final guard. Later runs of the final version encountered unrelated background speech and recognition errors; these are retained as diagnostic evidence, not counted as clean speed benchmarks. A further fixture used a shorter follow-up and louder Mac playback, so its timings are not a controlled like-for-like comparison. No percentage speed guarantee is inferred from these small, cloud-variable samples.
+
+Firmware, microphone gain, PCM format, playback buffering, STT decoding/tail padding, selected TTS voice/model and device power policy were unchanged. Mac volume and application speech preferences were restored after each automated run. Restore points: Git tag `backup/pre-mic-latency-20261104` and the private Hub backup `/var/backups/wappai/20261104-mic-latency/`.
+
+The existing streaming-JSON interface remains in use; see [Claude Code's official programmatic usage documentation](https://code.claude.com/docs/en/headless). Bare mode was not adopted because the documented mode does not use the existing subscription login.
 
 ## Restore points and references
 

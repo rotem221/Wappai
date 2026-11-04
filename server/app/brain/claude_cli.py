@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import AsyncIterator
 
 from .. import config
-from .persona import system_prompt
+from .persona import system_prompt, speech_instructions
 
 log = logging.getLogger("brain.cli")
 
@@ -29,13 +29,12 @@ class ClaudeCLI:
         self.last = 0.0
         self.lock = asyncio.Lock()
         self.last_ok = True       # False when the last turn ended in an error (not signed in, usage limit, ...)
-        self.speech_preferences = None
         Path(config.CLAUDE_WORKDIR).mkdir(parents=True, exist_ok=True)
 
     def _args(self):
         a = [config.CLAUDE_BIN, "-p", "--input-format", "stream-json", "--output-format", "stream-json",
              "--verbose", "--include-partial-messages", "--model", config.CLAUDE_MODEL,
-             "--system-prompt", system_prompt(), "--disallowedTools", BLOCKED_TOOLS]
+             "--system-prompt", system_prompt(live_preferences=False), "--disallowedTools", BLOCKED_TOOLS]
         allowed = ["WebSearch"]
         mcp = Path(config.CLAUDE_WORKDIR) / "mcp.json"
         if mcp.exists():
@@ -49,9 +48,7 @@ class ClaudeCLI:
         return a
 
     async def _ensure(self):
-        preferences = (config.USER_ADDRESS, config.ASSISTANT_GENDER)
-        stale = self.proc and (time.time() - self.last > IDLE_RESET_S or self.turns >= MAX_TURNS
-                               or self.speech_preferences != preferences)
+        stale = self.proc and (time.time() - self.last > IDLE_RESET_S or self.turns >= MAX_TURNS)
         if self.proc and (self.proc.returncode is not None or stale):
             await self.reset()
         if not self.proc:
@@ -62,9 +59,14 @@ class ClaudeCLI:
                 stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
                 limit=4 * 1024 * 1024)
             self.turns = 0
-            self.speech_preferences = preferences
+            self.last = time.time()
             asyncio.create_task(self._drain_stderr(self.proc))
             log.info("claude started (pid %s, model %s)", self.proc.pid, config.CLAUDE_MODEL)
+
+    async def prepare(self):
+        """Start the CLI while the microphone captures, without a model turn or history changes."""
+        async with self.lock:
+            await self._ensure()
 
     async def _drain_stderr(self, proc):
         while proc.stderr and (line := await proc.stderr.readline()):
@@ -89,6 +91,7 @@ class ClaudeCLI:
             self.last = time.time()
             self.turns += 1
             content = f"[הקשר: {context}]\n{text}" if context else text
+            content += "\n" + speech_instructions()
             msg = {"type": "user", "message": {"role": "user", "content": content}}
             self.proc.stdin.write((json.dumps(msg, ensure_ascii=False) + "\n").encode())
             await self.proc.stdin.drain()
