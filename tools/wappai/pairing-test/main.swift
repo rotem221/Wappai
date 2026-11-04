@@ -14,3 +14,9 @@ assert(!PairingPolicy.offerDiscovery(nearby:1,dismissed:false,remembered:false,a
 assert(!PairingPolicy.offerDiscovery(nearby:1,dismissed:true,remembered:false,authenticated:false,online:false,foreground:true))
 assert(!PairingPolicy.offerDiscovery(nearby:0,dismissed:false,remembered:false,authenticated:false,online:false,foreground:true))
 print("Pairing restoration, duplicate discovery and join acknowledgement regressions passed")
+// A remembered/authenticated device needs Wi-Fi recovery, never new ownership.
+assert(PairingPolicy.offerNetworkRecovery(authenticated:true,statusKnown:true,wifiConnected:false,online:false,joining:false,foreground:true,alreadyOffered:false))
+for blocked in 0..<7 {
+    assert(!PairingPolicy.offerNetworkRecovery(authenticated:blocked != 0,statusKnown:blocked != 1,wifiConnected:blocked == 2,online:blocked == 3,joining:blocked == 4,foreground:blocked != 5,alreadyOffered:blocked == 6))
+}
+print("Verified-offline recovery policy: unknown state, online devices, joining, background and repeat prompts suppressed")

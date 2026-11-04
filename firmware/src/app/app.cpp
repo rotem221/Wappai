@@ -1,5 +1,6 @@
 #include "pip_storage.h"
 #include "shake_detector.h"
+#include "power_policy.h"
 // The creature's "body": input (buttons, touch, IMU), power states, timers and drawing.
 // Runs on core 1 from loop(); the network task (core 0) talks to it through `model`.
 #include "app.h"
@@ -146,6 +147,8 @@ static void wake(bool user = false) {
 static void showFace();
 
 static void screenOff(uint32_t now) {
+    // Setup bypasses the normal face renderer: clear its pixels on next wake.
+    if(wsetup.active()){wsetup.close();faceNeedsClear=true;}
     if (power == P_OFF) return;
     showFace();
     power = P_OFF;
@@ -696,7 +699,7 @@ static void updatePower(uint32_t now) {
     if (power == P_ACTIVE && idle > (int32_t)model.dimMs) { power = P_DIM; setBrightness(BRIGHT_DIM); }
     if (power == P_DIM && idle < (int32_t)model.dimMs) { power = P_ACTIVE; setBrightness(activeBrightness()); }
     if (power == P_DIM && idle > (int32_t)model.offMs) screenOff(now);    // a long meeting records with the screen off
-    uint32_t deepAfter = model.deepMs;
+    uint32_t deepAfter = powerDeepDelay(model.deepMs,manualLocked,pocket,bat.present ? bat.pct:-1);
     if (power == P_OFF && !model.assetBusy && !bat.usb && !meeting && !netRecordingPending() && !audioPlaying() && since(now, offSince) > deepAfter) {
         modelLock();
         bool soon = model.timerOn && (int32_t)(model.timerEnd - now) < (int32_t)deepAfter;
@@ -971,9 +974,8 @@ static void render(uint32_t now) {
     face.setTalk(audioPlaying() ? audioMouth() : 0.f);
     // idle life only when nothing is going on (not listening, talking, thinking, recording or ringing)
     face.setIdle(!recording && !meeting && !audioPlaying() && !alarmOn && ringMode == RING_NONE && (int32_t)(now - emotionHoldUntil) > 0);
-    // with subtitles: lift and shrink the face so 3 lines fit under a wide-open mouth and nothing touches the edge
-    // (-44 px, 80 %: checked for every emotion with tools/face_preview, talking and not)
-    face.setCenterOffset(-16.f, 0.88f);
+    // Lower the resting character by 6px; retain the existing caption/recording clearance.
+    face.setCenterOffset((subOn || subDrawn || liveOn || recording || ringMode!=RING_NONE) ? -16.f:-10.f, 0.88f);
     face.update(dt);
     uint32_t q1 = micros(); tUpd += q1 - q0;
     Rect faceDirty=renderCharacter();unionRect(dirty,faceDirty);
@@ -1062,6 +1064,7 @@ void appBegin() {
     imuBegin();
     pmuBegin(BATTERY_CARE);
     bat = pmuRead();
+    setBrightness(activeBrightness()); // apply low-battery cap on the first frame too
     // clock: RTC keeps local time between boots; the server corrects it on connect
     setenv("TZ", TZ_INFO, 1);
     tzset();
@@ -1109,7 +1112,9 @@ static void setupLoop(uint32_t now) {
     lgfx::touch_point_t tp;
     bool t = lcd.getTouch(&tp);
     wsetup.touch(t, tp.x, tp.y, now);
-    markActivity();                                  // keep the screen on while setting up
+    if(t)markActivity();
+    // Leaving network setup open must not drain the battery indefinitely.
+    if(since(now,model.lastActivity)>60000){screenOff(now);return;}
     if ((int32_t)(now - next) >= 0) {
         next = now + 40;
         scr.setTextSize(1.f);
@@ -1201,6 +1206,7 @@ void appSerial(const String &cmd) {
     else if (cmd == "unlock") setManualLock(false);
     else if (cmd.startsWith("shakeacc ")) {if(shakeDetector.sample(cmd.substring(9).toFloat(),millis(),shakeAllowed()))reactToShake();}
     else if (cmd == "pipstore") pipStorageInfo();
+    else if (cmd == "powerinfo") Serial.printf("power: rx=%d idle=%lu off=%lu deep=%lu setup=%d usb=%d\n",audioMicReceiverActive(),since(millis(),model.lastActivity),power==P_OFF?since(millis(),offSince):0,powerDeepDelay(model.deepMs,manualLocked,pocket,bat.present?bat.pct:-1),wsetup.active(),bat.usb);
     else if (cmd == "bat") { Battery b = pmuRead(); Serial.printf("bat present=%d %d%% %dmV usb=%d chg=%d full=%d care=%d\n", b.present, b.pct, b.mv, b.usb, b.charging, b.full, b.care); }
     else if (cmd.startsWith("sub ")) { strncpy(sub, cmd.substring(4).c_str(), sizeof sub - 1); subUntil = millis() + 8000; }
     else if (cmd == "btn") Serial.printf("btn: boot_gpio0=%d (0=pressed) pwr=%d bootDown=%d recording=%d\n", digitalRead(PIN_BOOT), pwrButtonDown(), bootDown, recording);

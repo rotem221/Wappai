@@ -5,6 +5,7 @@
 #include <Arduino.h>
 
 bool audioBegin();
+bool audioMicReceiverActive(); // diagnostic: RX DMA only active during capture
 void audioOpen(bool reset);                // start (reset=true) or continue (reset=false) an utterance
 void audioPush(const uint8_t *pcm, size_t n);
 void audioClose();                         // no more data for now: play the rest, then stop

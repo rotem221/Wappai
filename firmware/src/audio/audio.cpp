@@ -10,6 +10,8 @@
 static I2SClass i2s;
 static const int RATE = 16000;
 static bool ready = false;
+static volatile bool micReceiverActive = true;
+bool audioMicReceiverActive(){return micReceiverActive;}
 
 // reproducción: ring buffer de muestras mono en PSRAM (20 s)
 static const size_t PLAY_CAP = RATE * 20;
@@ -143,7 +145,15 @@ static int32_t testPeak[2], testN = 0;
 static void micTask(void *) {
     static int16_t st[1024 * 2], mono[1024];
     for (;;) {
-        size_t got = i2s.readBytes((char *)st, sizeof(st));   // siempre se lee: si no, el DMA se desborda
+        // This task alone owns RX enable/disable; TX keeps its shared clock for
+        // chirps and speech. Do not keep capturing/discarding audio while idle.
+        const bool needed=micOn || testLeft>0;
+        if(needed!=micReceiverActive){
+            esp_err_t result=needed ? i2s_channel_enable(i2s.rxChan()):i2s_channel_disable(i2s.rxChan());
+            if(result==ESP_OK)micReceiverActive=needed;
+        }
+        if(!needed || !micReceiverActive){vTaskDelay(pdMS_TO_TICKS(20));continue;}
+        size_t got = i2s.readBytes((char *)st, sizeof(st));
         int n = got / 4;
         if (testLeft > 0) {
             for (int i = 0; i < n; i++)

@@ -15,6 +15,12 @@ struct RootView:View {
     @State private var showSessions=false
     @State private var showPips=false
     @State private var showPairing=false
+    @State private var offeredNetworkRecovery=false
+    @State private var recoverySheet=false
+    private var shouldOfferNetworkRecovery:Bool {
+        !showPairing && !showSettings && !showPips && !showMeetings && !showSessions && studioPip == nil && previewHardware == nil &&
+        PairingPolicy.offerNetworkRecovery(authenticated:bluetooth.paired,statusKnown:bluetooth.wifiStatusKnown,wifiConnected:bluetooth.wifiConnected,online:client.device.online,joining:bluetooth.joining,foreground:phase == .active,alreadyOffered:offeredNetworkRecovery)
+    }
     @State private var dismissedDiscovery=false
     @State private var previewHardware:WappaiHardware?
     @State private var studioPip:PipSkin?
@@ -88,12 +94,24 @@ struct RootView:View {
             .sheet(isPresented:$showPips){PipGallery(client:client)}
             .sheet(item:$studioPip){pip in ExpressionStudio(client:client,pip:pip)}
             .sheet(item:$previewHardware){hardware in NavigationStack{DeviceShowroom(hardware:hardware)}}
-            .sheet(isPresented:$showPairing,onDismiss:{dismissedDiscovery=true}){PairingView(bluetooth:bluetooth).presentationDetents([.medium]).presentationDragIndicator(.visible)}
+            .sheet(isPresented:$showPairing,onDismiss:{dismissedDiscovery=true;recoverySheet=false;bluetooth.endSetup()}){PairingView(bluetooth:bluetooth).presentationDetents([.medium]).presentationDragIndicator(.visible)}
             .task(id:bluetooth.nearby.count){
                 // Allow the existing hub session and remembered BLE owner to restore first.
                 try? await Task.sleep(for:.seconds(2))
                 guard !Task.isCancelled else{return}
                 if PairingPolicy.offerDiscovery(nearby:bluetooth.nearby.count,dismissed:dismissedDiscovery,remembered:bluetooth.hasRememberedDevice,authenticated:bluetooth.paired,online:client.device.online,foreground:phase == .active){showPairing=true}
+            }
+            .task(id:shouldOfferNetworkRecovery){
+                guard shouldOfferNetworkRecovery else{return}
+                // Give saved-network reconnect a grace period. Unknown BLE state
+                // and a sleeping/offline Hub are not evidence of missing Wi-Fi.
+                try? await Task.sleep(for:.seconds(12))
+                guard !Task.isCancelled,shouldOfferNetworkRecovery else{return}
+                offeredNetworkRecovery=true;recoverySheet=true
+                bluetooth.beginSetup();showPairing=true
+            }
+            .onChange(of:bluetooth.wifiConnected){_,connected in
+                if connected {offeredNetworkRecovery=false;if recoverySheet && !bluetooth.joining {showPairing=false}}
             }
             .onChange(of:bluetooth.setupComplete){_,complete in if complete {showPairing=false}}
             .onChange(of:client.device.online){_,online in if online && !bluetooth.joining && !bluetooth.setupRequested {showPairing=false}}
@@ -224,7 +242,10 @@ struct PairingView: View {
                     }.padding(24)
                 } else if bluetooth.paired {
                     List {
-                        Section {Label("מחובר למכשיר ב־Bluetooth",systemImage:"checkmark.circle.fill").foregroundStyle(.green).font(.subheadline)}
+                        Section {
+                            Label("מחובר למכשיר ב־Bluetooth",systemImage:"checkmark.circle.fill").foregroundStyle(.green).font(.subheadline)
+                            if bluetooth.wifiStatusKnown && !bluetooth.wifiConnected {Text("המכשיר בקרבתך, אך אינו מחובר ל־Wi‑Fi. בחר רשת כדי להמשיך בשיחה.").font(.subheadline).foregroundStyle(.secondary)}
+                        }
                         Section {
                             ForEach(bluetooth.networks) { network in
                                 Button { if network.open {bluetooth.join(ssid:network.ssid,password:"")} else {selected=network} } label: {
