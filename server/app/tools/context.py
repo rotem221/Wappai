@@ -103,7 +103,17 @@ CAL_WORDS = ("יומן", "לוז", "לו\"ז", "פגיש", "אירוע", "שבו
 async def build(device: dict | None = None, question: str = "") -> str:
     now = datetime.now(ZoneInfo(config.TZ))
     parts = [f"עכשיו יום {DAYS[now.weekday()]}, {now:%d/%m/%Y}, השעה {now:%H:%M}"]
-    w, cal = await asyncio.gather(weather(), _safe(calendar.summary()))
+    from ..display_intent import weather_requested
+    wants_calendar = any(k in question for k in CAL_WORDS)
+    async def cached_weather():
+        # Unrelated questions must not wait for a cold weather network request.
+        if not _weather.get('busy') and time.time()-_weather['t'] > 15*60:
+            _weather['busy'] = True
+            _refresh_later(_fetch_weather())
+        return _weather['text']
+    async def no_calendar(): return ''
+    w, cal = await asyncio.gather(weather() if weather_requested(question) else cached_weather(),
+                                  _safe(calendar.summary()) if wants_calendar else no_calendar())
     if w:
         parts.append(w)
     from . import composio

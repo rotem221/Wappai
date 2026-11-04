@@ -29,6 +29,7 @@ class ClaudeCLI:
         self.last = 0.0
         self.lock = asyncio.Lock()
         self.last_ok = True       # False when the last turn ended in an error (not signed in, usage limit, ...)
+        self.speech_preferences = None
         Path(config.CLAUDE_WORKDIR).mkdir(parents=True, exist_ok=True)
 
     def _args(self):
@@ -48,7 +49,9 @@ class ClaudeCLI:
         return a
 
     async def _ensure(self):
-        stale = self.proc and (time.time() - self.last > IDLE_RESET_S or self.turns >= MAX_TURNS)
+        preferences = (config.USER_ADDRESS, config.ASSISTANT_GENDER)
+        stale = self.proc and (time.time() - self.last > IDLE_RESET_S or self.turns >= MAX_TURNS
+                               or self.speech_preferences != preferences)
         if self.proc and (self.proc.returncode is not None or stale):
             await self.reset()
         if not self.proc:
@@ -59,6 +62,7 @@ class ClaudeCLI:
                 stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
                 limit=4 * 1024 * 1024)
             self.turns = 0
+            self.speech_preferences = preferences
             asyncio.create_task(self._drain_stderr(self.proc))
             log.info("claude started (pid %s, model %s)", self.proc.pid, config.CLAUDE_MODEL)
 
@@ -125,11 +129,11 @@ class ClaudeCLI:
                         await self.reset()        # never carry failed turns (e.g. before sign-in) into the next conversation
                         if not got_delta:
                             if "login" in msg.lower() or "logged in" in msg.lower():
-                                yield "[sad] אני עוד לא מחובר למוח של Claude. צריך להתחבר בשרת."
+                                yield "[sad] עדיין אין חיבור למוח של Claude. צריך להתחבר בשרת."
                             elif "limit" in msg.lower():
                                 yield "[sleepy] הגעתי למגבלת השימוש כרגע. ננסה שוב קצת אחר כך."
                             else:
-                                yield "[sad] משהו השתבש אצלי במוח. נסה שוב עוד רגע."
+                                yield "[sad] משהו השתבש אצלי במוח. אפשר לנסות שוב עוד רגע."
                         return
                     self.last_ok = True
                     for h in held:

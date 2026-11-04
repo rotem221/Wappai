@@ -1,5 +1,7 @@
 """ElevenLabs TTS and account discovery. Credentials remain on the Hub."""
 import json
+import re
+from contextlib import asynccontextmanager
 from typing import AsyncIterator
 from urllib.parse import quote
 import httpx
@@ -7,6 +9,31 @@ from .. import config
 
 SECRET_FILE = config.DATA_DIR / 'elevenlabs.json'
 BASE = 'https://api.elevenlabs.io'
+_client = None
+
+
+async def start():
+    global _client
+    if _client is None:
+        _client = httpx.AsyncClient(http2=True, timeout=httpx.Timeout(60, connect=10),
+                                    limits=httpx.Limits(max_connections=8, max_keepalive_connections=4, keepalive_expiry=90))
+
+
+async def close():
+    global _client
+    client, _client = _client, None
+    if client is not None:
+        await client.aclose()
+
+
+@asynccontextmanager
+async def connection():
+    # Server lifecycle owns the pool. Standalone tools/tests still close their client.
+    if _client is not None:
+        yield _client
+    else:
+        async with httpx.AsyncClient(http2=True, timeout=httpx.Timeout(60, connect=10)) as client:
+            yield client
 
 def key() -> str:
     try:
@@ -45,14 +72,17 @@ async def models(api_key=None):
 def speech_body(text, emotion=None, model=None, style=None):
     model = model or config.ELEVENLABS_MODEL
     lively = (style or config.TTS_STYLE) == 'lively'
-    positive = emotion in (None, '', 'speaking', 'idle', 'happy', 'joy', 'success', 'excited', 'proud', 'love')
+    positive = emotion in ('happy', 'joy', 'success', 'excited', 'proud', 'love')
     # v3 supports audio tags; use expressive delivery only for suitable emotions.
     if model.startswith('eleven_v3') and lively and positive:
         text = '[excited] ' + text
     settings = {'stability': 0.5, 'similarity_boost': 0.75}
     if not model.startswith(('eleven_v3', 'eleven_v4')):
         settings.update(style=0.35 if lively and positive else 0.1, speed=1.04 if lively and positive else 1.0)
-    return {'text': text, 'model_id': model, 'voice_settings': settings}
+    body = {'text': text, 'model_id': model, 'voice_settings': settings}
+    if re.search(r'[א-ת]', text):
+        body['language_code'] = 'he'
+    return body
 
 async def stream(text: str, emotion=None, *, voice_id=None, model=None, style=None) -> AsyncIterator[bytes]:
     voice = voice_id or config.ELEVENLABS_VOICE_ID
@@ -60,11 +90,11 @@ async def stream(text: str, emotion=None, *, voice_id=None, model=None, style=No
         raise RuntimeError('ElevenLabs is not connected or a voice is not selected')
     url = BASE + '/v1/text-to-speech/' + quote(voice, safe='') + '/stream'
     pending = b''; total = 0
-    async with httpx.AsyncClient(timeout=httpx.Timeout(60, connect=10)) as client:
+    async with connection() as client:
         async with client.stream('POST', url, params={'output_format': 'pcm_16000'},
                 headers={'xi-api-key': key()}, json=speech_body(text, emotion, model, style)) as response:
             response.raise_for_status()
-            async for chunk in response.aiter_bytes(4096):
+            async for chunk in response.aiter_bytes(2048):
                 chunk = pending + chunk; end = len(chunk) // 2 * 2
                 if end:
                     total += end

@@ -108,3 +108,57 @@ def test_elevenlabs_pcm_contract_and_voice_options(monkeypatch,payload,valid):
         with pytest.raises(RuntimeError):asyncio.run(run())
     assert requests[0][0].endswith('/voice123/stream?output_format=pcm_16000')
     assert requests[0][1]['model_id']=='eleven_v3' and requests[0][1]['text'].startswith('[excited]')
+
+def test_address_preferences_are_explicit_and_independent(client,monkeypatch):
+    from app.voice import preferences
+    from app.brain.persona import speech_instructions
+    monkeypatch.setattr(config,'USER_ADDRESS','auto');monkeypatch.setattr(config,'ASSISTANT_GENDER','neutral')
+    assert not preferences.remember('נקבה')
+    assert not preferences.remember('את מדברת יפה')
+    assert not preferences.remember('היא אמרה פנה אליי בלשון נקבה')
+    assert preferences.remember('אני מעדיפה בלשון נקבה בבקשה',preferences.QUESTION)
+    assert config.USER_ADDRESS=='feminine' and config.ASSISTANT_GENDER=='neutral'
+    assert admin.settings()['user_address']=='feminine'
+    assert 'את, תרצי, יכולה' in speech_instructions()
+    assert preferences.remember('פנה אליי בלשון זכר בבקשה')
+    assert config.USER_ADDRESS=='masculine'
+    assert client.post('/v1/voice/preferences',json={'user_address':'neutral'}).status_code==401
+    assert client.post('/v1/voice/preferences',headers=H,json={'user_address':'unknown'}).status_code==422
+    assert client.post('/v1/voice/preferences',headers=H,json={'tts_provider':'edge'}).status_code==422
+    result=client.post('/v1/voice/preferences',headers=H,json={'user_address':'feminine','assistant_gender':'masculine'})
+    assert result.status_code==200
+    assert result.json()['user_address']=='feminine' and result.json()['assistant_gender']=='masculine'
+    prompt=speech_instructions();assert 'את, תרצי, יכולה' in prompt and 'אני מוכן, אני יכול' in prompt
+
+def test_clear_hebrew_without_forced_excitement():
+    body=elevenlabs.speech_body('שלום, אפשר להתחיל.','speaking','eleven_v4_turbo','lively')
+    assert body['language_code']=='he' and body['text']=='שלום, אפשר להתחיל.'
+    assert 'speed' not in body['voice_settings']
+    assert 'language_code' not in elevenlabs.speech_body('Hello there.','speaking','eleven_v3','lively')
+    assert elevenlabs.speech_body('שלום','speaking','eleven_v3','lively')['text']=='שלום'
+
+def test_unrelated_question_does_not_wait_for_weather_or_calendar(monkeypatch):
+    from app.tools import context
+    from unittest.mock import AsyncMock
+    monkeypatch.setattr(context,'_weather',{'t':0,'text':'','busy':True})
+    weather=AsyncMock(return_value='תחזית');calendar=AsyncMock(return_value='פגישה')
+    monkeypatch.setattr(context,'weather',weather);monkeypatch.setattr(context.calendar,'summary',calendar)
+    asyncio.run(context.build({},'שלום'))
+    weather.assert_not_called();calendar.assert_not_called()
+    asyncio.run(context.build({},'מה מזג האוויר?'))
+    weather.assert_awaited_once();calendar.assert_not_called()
+
+@pytest.mark.parametrize('language',['he','en'])
+def test_language_gate_only_decodes_english(monkeypatch,language):
+    import importlib,sys,types
+    monkeypatch.setitem(sys.modules,'faster_whisper',types.SimpleNamespace(WhisperModel=object))
+    from app.voice import stt_fast
+    decoded=[]
+    def segments():
+        decoded.append(True)
+        yield types.SimpleNamespace(text=' hello ')
+    model=types.SimpleNamespace(transcribe=lambda *a,**kw:(segments(),types.SimpleNamespace(language=language)))
+    monkeypatch.setattr(stt_fast,'_load',lambda:model)
+    result=stt_fast._recognize(bytes(32000))
+    assert result==(language,'hello' if language=='en' else '')
+    assert bool(decoded)==(language=='en')

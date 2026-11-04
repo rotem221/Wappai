@@ -104,6 +104,8 @@ def _need(request: Request):
 
 # ---------------------------------------------------------------- settings
 EDITABLE = {   # key: (config attribute, type, validator)
+    "user_address": ("USER_ADDRESS", str, lambda v: v in ("auto", "masculine", "feminine", "neutral")),
+    "assistant_gender": ("ASSISTANT_GENDER", str, lambda v: v in ("masculine", "feminine", "neutral")),
     "tts_provider": ("TTS_PROVIDER", str, lambda v: v in ("edge", "elevenlabs")),
     "tts_style": ("TTS_STYLE", str, lambda v: v in ("natural", "lively")),
     "elevenlabs_voice_id": ("ELEVENLABS_VOICE_ID", str, lambda v: 1<=len(v)<=100 and all(c.isalnum() or c in "_-" for c in v)),

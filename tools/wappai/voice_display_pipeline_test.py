@@ -8,7 +8,8 @@ from app import main
 from unittest.mock import AsyncMock
 
 async def run():
-    events=[]
+    events=[];contexts=[]
+    main.config.USER_ADDRESS="auto"
     async def emit(obj=None,binary=None,**kw):
         if obj:events.append(obj)
     main.hub.emit=emit
@@ -23,6 +24,7 @@ async def run():
     main.tts.stream=speech
     class Brain:
         async def ask(self,*a):
+            contexts.append(a[1])
             # Deliberately wrong model card is suppressed for a home-only request.
             yield '[happy]<show what="weather"/><show what="device" entity="climate.playroom"/>המזגן כבוי.'
     main.wappai.current_brain=lambda:Brain()
@@ -33,7 +35,24 @@ async def run():
     assert all(e['dev']['id']=='climate.playroom' for e in badges)
     assert events[-1]['type']=='turn.completed'
     assert events[0]['type']=='interaction' and events[0]['clear_card']
+    assert any(e.get('text')==main.preferences.QUESTION for e in events)
+    main.wappai.store.message(main.wappai.active,'assistant',main.preferences.QUESTION)
+    events.clear();await main.converse('נקבה',heard=False)
+    assert main.config.USER_ADDRESS=='feminine'
+    assert 'את, תרצי, יכולה' in contexts[-1]
+    assert not any(e.get('text')==main.preferences.QUESTION for e in events)
     events.clear();await main.converse('מה מזג האוויר?',heard=False)
     assert any(e.get('kind')=='weather' for e in events)
+    import types
+    started=asyncio.Event();both=asyncio.Event()
+    async def recognize(pcm):
+        started.set();await both.wait();return ('en','Hello, this is English.')
+    class Session:
+        async def finish(self):
+            await started.wait();both.set();return 'תמלול עברי'
+    sys.modules['app.voice.stt_fast']=types.SimpleNamespace(recognize=recognize)
+    main.config.STT_ENGINE='hybrid';main.converse=AsyncMock()
+    await asyncio.wait_for(main.handle_audio(bytes(32000),Session()),2)
+    assert main.converse.call_args.args[0]=='Hello, this is English.'
     print('Production conversation: air conditioner never opens weather; pending and verified room badge, textual thinking and explicit weather all passed.')
 asyncio.run(run())

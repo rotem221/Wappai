@@ -13,7 +13,8 @@ _preview_lock = asyncio.Lock()
 def status():
     return {'provider': config.TTS_PROVIDER, 'style': config.TTS_STYLE,
             'edge_voice': config.TTS_VOICE, 'voice_id': config.ELEVENLABS_VOICE_ID,
-            'model_id': config.ELEVENLABS_MODEL, 'connected': bool(elevenlabs.key())}
+            'model_id': config.ELEVENLABS_MODEL, 'connected': bool(elevenlabs.key()),
+            'user_address': config.USER_ADDRESS, 'assistant_gender': config.ASSISTANT_GENDER}
 
 async def upstream(operation):
     try:
@@ -37,6 +38,18 @@ async def validate_voice(voice, model):
     await upstream(elevenlabs.get('/v1/voices/' + quote(voice,safe='')))
 
 def register(app, require):
+    @app.post('/v1/voice/preferences')
+    async def preferences(request:Request):
+        require(request);body=await request.json()
+        if not isinstance(body,dict) or not body or set(body)-{'user_address','assistant_gender'}:
+            raise HTTPException(422,'העדפת דיבור לא תקינה')
+        for k,v in body.items():
+            if not isinstance(v,str) or not admin.EDITABLE[k][2](v):
+                raise HTTPException(422,'העדפת דיבור לא תקינה')
+        saved=admin.settings();saved.update(body)
+        admin.SETTINGS_FILE.write_text(json.dumps(saved,ensure_ascii=False));admin.apply_settings()
+        return status()
+
     @app.get('/v1/voice')
     async def current(request:Request):
         require(request);return status()
@@ -88,7 +101,7 @@ def register(app, require):
         if _preview_lock.locked():raise HTTPException(429,'דוגמת קול כבר בהכנה')
         async def generate():
             pcm=bytearray()
-            async for chunk in elevenlabs.stream('היי! איזה כיף לשמוע אותך. אני כאן, מוכן לעזור!', 'happy',voice_id=voice,model=model,style=style):
+            async for chunk in elevenlabs.stream('שלום! איזה כיף לשמוע אותך. אני כאן כדי לעזור.', 'speaking',voice_id=voice,model=model,style=style):
                 pcm.extend(chunk)
                 if len(pcm)>32000*25:raise RuntimeError('Preview too long')
             out=io.BytesIO()

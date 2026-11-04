@@ -24,11 +24,11 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from types import SimpleNamespace
 
 from . import admin, config, wappai, web_auth
-from .brain.persona import emotion_names
-from .brain.reply import ReplyParser
+from .brain.persona import emotion_names, speech_instructions
+from .brain.reply import ReplyParser, Event
 from . import integrations
 from .tools import battery, calendar, composio, context, ha, meeting as meeting_mod
-from .voice import adpcm, stt, stt_stream, tts
+from .voice import adpcm, stt, stt_stream, tts, preferences
 
 USE_STREAM = config.STT_ENGINE in ("stream","hybrid") and stt_stream.available()
 
@@ -166,6 +166,10 @@ async def converse(text: str, heard: bool = True, on_done=None, t0: float | None
     try:
         if heard:
             await hub.emit({"type": "heard", "text": text})
+        previous = wappai.store.rows('SELECT text FROM messages WHERE session_id=? AND role=? ORDER BY created DESC,rowid DESC LIMIT 1', (wappai.active, 'assistant'))
+        preferences.remember(text, previous[0]['text'] if previous else '')
+        history = wappai.conversation_context(text)
+        ask_address = config.USER_ADDRESS == 'auto' and preferences.QUESTION not in history
         smart_home = home_requested(text)
         target = None
         await hub.emit({"type":"interaction","text":"בודק את הבקשה…" if smart_home else "חושב…","clear_card":True})
@@ -179,7 +183,8 @@ async def converse(text: str, heard: bool = True, on_done=None, t0: float | None
         ctx = await context.build(hub.device, text)
         if smart_home:
             ctx += '\nתצוגה: זו בקשת בית חכם. אין להציג מזג אוויר בגלל המילה מזגן או מעלות. אחרי בדיקת תוצאת הפעולה בכלים, שלח <show what="device" entity="הישות המדויקת"/> לתצוגת חיווי קטן. אל תטען להצלחה ללא תוצאת כלי.'
-        ctx += "\n" + wappai.conversation_context(text)
+        ctx += "\n" + history
+        ctx += "\n" + speech_instructions()
         parser = ReplyParser(EMOTIONS)
         q: asyncio.Queue = asyncio.Queue(maxsize=16)
         emotion = {"v": "speaking"}
@@ -280,6 +285,8 @@ async def converse(text: str, heard: bool = True, on_done=None, t0: float | None
             marks.setdefault("first_token", time.time() - t0)
             await handle(parser.feed(chunk))
         await handle(parser.finish())
+        if ask_address and not flags['meeting'] and preferences.QUESTION not in ' '.join(spoken):
+            await handle([Event('sentence', preferences.QUESTION)])
         if target: await device_badge(target['id'])
         await q.put(None)
         await sp
@@ -303,7 +310,7 @@ async def converse(text: str, heard: bool = True, on_done=None, t0: float | None
         log.exception("conversation failed")
         await hub.emit({"type":"turn.failed"})
         await hub.set_state(emotion="error")
-        await hub.emit({"type": "say", "id": utt, "seq": 0, "text": "משהו השתבש אצלי. נסה שוב עוד רגע.", "emotion": "error",
+        await hub.emit({"type": "say", "id": utt, "seq": 0, "text": "משהו השתבש אצלי. אפשר לנסות שוב עוד רגע.", "emotion": "error",
                         "audio": False})
 
 
@@ -335,20 +342,31 @@ async def handle_audio(pcm: bytes, sess=None):
     if secs < 0.5:
         if sess is not None:
             sess.cancel()
-        await _hint("החזק את BOOT בזמן הדיבור ושחרר בסיום" if admin.current_settings()["hold_to_talk"] else "לחץ BOOT, דבר, ואז לחץ שוב לסיום")
+        await _hint("יש להחזיק את BOOT בזמן הדיבור ולשחרר בסיום" if admin.current_settings()["hold_to_talk"] else "לחיצה על BOOT מתחילה הקלטה, ולחיצה נוספת מסיימת")
         return
     await hub.set_state(emotion="thinking", ring="think")
     text = ""
-    if sess is not None:
-        text = await sess.finish()
     if config.STT_ENGINE == "hybrid":
         from .voice import stt_fast
-        language, multilingual = await stt_fast.recognize(pcm)
+        # Final Hebrew decoding and English detection are independent; don't
+        # make the user wait for two sequential recognition passes on release.
+        recognition = [asyncio.create_task(stt_fast.recognize(pcm))]
+        if sess is not None: recognition.append(asyncio.create_task(sess.finish()))
+        try:
+            results = await asyncio.gather(*recognition)
+            language, multilingual = results[0]
+            if sess is not None: text = results[1]
+        finally:
+            for task in recognition:
+                if not task.done(): task.cancel()
+            await asyncio.gather(*recognition, return_exceptions=True)
         if language == "en": text = multilingual
+    elif sess is not None:
+        text = await sess.finish()
     if len(text) < 2:
         text = await stt.transcribe(pcm)
     if not text:
-        await _hint("לא שמעתי טוב. נסה שוב, קצת יותר קרוב" if peak > 0.01 else "לא שמעתי כלום. המיקרופון שקט")
+        await _hint("לא שמעתי טוב. אפשר לנסות שוב, קצת יותר קרוב" if peak > 0.01 else "לא שמעתי כלום. המיקרופון שקט")
         return
     log.info("latency: stt %.2fs", time.time() - t0)
     await converse(text, t0=t0)
@@ -625,6 +643,8 @@ async def info_loop():
 
 @app.on_event("startup")
 async def startup():
+    from .voice import elevenlabs
+    await elevenlabs.start()
     asyncio.create_task(pinger())
     asyncio.create_task(info_loop())
     await asyncio.to_thread(meeting_mod.recover)
@@ -637,6 +657,12 @@ async def startup():
     if config.STT_ENGINE == "hybrid":
         from .voice import stt_fast
         asyncio.create_task(stt_fast.warmup())
+
+
+@app.on_event("shutdown")
+async def close_voice():
+    from .voice import elevenlabs
+    await elevenlabs.close()
 
 
 def _check(request: Request):

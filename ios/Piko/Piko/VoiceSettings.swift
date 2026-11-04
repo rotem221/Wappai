@@ -4,6 +4,7 @@ import AVFoundation
 struct HomeBadge {let name:String;let on:Bool;let pending:Bool;let available:Bool}
 struct VoiceAccount:Decodable {
     var provider:String;var style:String;var edge_voice:String;var voice_id:String;var model_id:String;var connected:Bool
+    var user_address:String? = nil;var assistant_gender:String? = nil
 }
 struct ElevenVoice:Decodable,Identifiable {let id:String;let name:String;let description:String;let language:String}
 struct ElevenModel:Decodable,Identifiable {let id:String;let name:String}
@@ -24,6 +25,16 @@ struct VoiceSettings:View {
     @State private var player:AVAudioPlayer?
     var body:some View {
         Form {
+            Section("לשון הפנייה") {
+                Picker("איך לפנות אליי",selection:Binding(get:{account.user_address ?? "auto"},set:{account.user_address=$0})) {
+                    Text("לשאול בשיחה").tag("auto");Text("זכר").tag("masculine");Text("נקבה").tag("feminine");Text("ניסוח ניטרלי").tag("neutral")
+                }
+                Picker("הדמות מדברת על עצמה",selection:Binding(get:{account.assistant_gender ?? "neutral"},set:{account.assistant_gender=$0})) {
+                    Text("ניסוח ניטרלי").tag("neutral");Text("זכר").tag("masculine");Text("נקבה").tag("feminine")
+                }
+                Button("שמירת לשון הפנייה"){Task{await savePreferences()}}
+                Text("אם לא נבחרה העדפה, Wappai ישאל בשיחה ויזכור את הבחירה. הקול אינו קובע את לשון הפנייה.").font(.caption).foregroundStyle(.secondary)
+            }.disabled(busy || !loaded)
             Section("הקול של Wappai") {
                 Picker("מקור הקול",selection:$account.provider){Text("קול מובנה").tag("edge");Text("ElevenLabs").tag("elevenlabs")}.accessibilityIdentifier("voiceProvider")
                 Picker("אופי הדיבור",selection:$account.style){Text("חי ונלהב").tag("lively");Text("טבעי").tag("natural")}
@@ -87,6 +98,11 @@ struct VoiceSettings:View {
     private func connect() async {
         busy=true;defer{busy=false}
         do{let data=try await client.call("/v1/voice/connect",body:["api_key":apiKey.trimmingCharacters(in:.whitespacesAndNewlines)]);accept(try JSONDecoder().decode(VoiceListing.self,from:data));account.connected=true;apiKey="";error="";message="החשבון מחובר. בחר קול ושמור."}
+        catch{self.error=error.localizedDescription}
+    }
+    private func savePreferences() async {
+        busy=true;defer{busy=false}
+        do{account=try JSONDecoder().decode(VoiceAccount.self,from:await client.call("/v1/voice/preferences",body:["user_address":account.user_address ?? "auto","assistant_gender":account.assistant_gender ?? "neutral"]));error="";message="לשון הפנייה נשמרה"}
         catch{self.error=error.localizedDescription}
     }
     private func save() async {
