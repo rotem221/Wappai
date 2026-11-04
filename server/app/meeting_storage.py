@@ -51,11 +51,40 @@ def remote_audio(directory:Path):
     return client().generate_presigned_url('get_object',Params={'Bucket':item['bucket'],'Key':item['key']},ExpiresIn=120)
 
 def evict(directory:Path):
+    try:
+        _evict_verified(directory)
+    except Exception:
+        # Optional cache cleanup must not turn a completed transcript into a
+        # processing failure. The archive worker retries while retaining audio.
+        import logging
+        logging.getLogger('meeting-storage').warning('Cloud eviction deferred; local audio retained')
+
+def _evict_verified(directory:Path):
     if os.getenv('MEETING_CLOUD_EVICT','0')!='1':return
-    # Keep local audio until the complete final recording has been verified in the bucket.
-    if not (directory/'audio.cloud.json').is_file():return
-    for path in list(directory.glob('*.m4a')):
-        if path.with_suffix('.cloud.json').is_file():path.unlink()
+    bucket=os.getenv('MEETING_S3_BUCKET')
+    transcript=directory/'transcript.txt'
+    if not bucket or not transcript.is_file() or not transcript.read_text().strip():return
+    # A historical receipt is insufficient: the bucket may have changed or the
+    # object may have been deleted since upload. Fail closed before removing audio.
+    def receipt_for(path):
+        receipt=path.with_suffix('.cloud.json')
+        if not receipt.is_file():return None
+        item=json.loads(receipt.read_text())
+        if item.get('bucket')!=bucket or item.get('key')!='meetings/'+directory.name+'/'+path.name:return None
+        if not isinstance(item.get('bytes'),int) or item['bytes']<=0:return None
+        if not isinstance(item.get('sha256'),str) or len(item['sha256'])!=64:return None
+        if path.exists():
+            if item['bytes']!=path.stat().st_size:return None
+            with path.open('rb') as stream:
+                if hashlib.file_digest(stream,'sha256').hexdigest()!=item['sha256']:return None
+        return item
+    final=receipt_for(directory/'audio.m4a')
+    if final is None:return
+    head=client().head_object(Bucket=bucket,Key=final['key'])
+    if head.get('ContentLength')!=final['bytes'] or head.get('Metadata',{}).get('sha256')!=final['sha256']:
+        raise IOError('Final cloud archive no longer verifies; local audio retained')
+    candidates=[path for path in directory.glob('*.m4a') if receipt_for(path) is not None]
+    for path in candidates:path.unlink()
 
 def delete_archive(directory:Path):
     receipts=list(directory.glob('*.cloud.json'))

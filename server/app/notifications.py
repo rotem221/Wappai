@@ -15,6 +15,8 @@ from . import config
 
 class Notifications:
     def __init__(self, path):
+        self._tokens = {}
+        self._clients = {}
         self.db = sqlite3.connect(path, check_same_thread=False)
         Path(path).chmod(0o600)  # Set before WAL creation so sidecars inherit private permissions.
         self.db.row_factory = sqlite3.Row
@@ -28,8 +30,29 @@ class Notifications:
             sidecar=Path(str(path)+suffix)
             if sidecar.exists():sidecar.chmod(0o600)
 
-    def configured(self):
-        return all(os.getenv(k) for k in ('APNS_KEY_ID', 'APNS_TEAM_ID', 'APNS_KEY_FILE', 'APNS_TOPIC')) and Path(os.getenv('APNS_KEY_FILE', '')).is_file()
+    def credentials(self, environment):
+        if environment not in ('sandbox', 'production'):
+            raise ValueError('Invalid APNs environment')
+        prefix = 'APNS_' + environment.upper()
+        # New Apple keys are environment-specific. Never mix a partial scoped
+        # configuration with a legacy key for another environment.
+        scoped = any(os.getenv(prefix + suffix) for suffix in ('_KEY_ID', '_KEY_FILE'))
+        key_id = os.getenv(prefix + '_KEY_ID' if scoped else 'APNS_KEY_ID', '')
+        key_file = os.getenv(prefix + '_KEY_FILE' if scoped else 'APNS_KEY_FILE', '')
+        team, topic = os.getenv('APNS_TEAM_ID', ''), os.getenv('APNS_TOPIC', '')
+        if not all((key_id, key_file, team, topic)) or not Path(key_file).is_file():
+            return None
+        return key_id, Path(key_file), team, topic
+
+    def configured(self, environment=None):
+        return any(self.credentials(e) is not None for e in
+                   ((environment,) if environment else ('sandbox', 'production')))
+
+    async def close(self):
+        for _, client in self._clients.values():
+            await client.aclose()
+        self._clients.clear()
+        self._tokens.clear()
 
     def register(self, installation, token, environment, timers, meetings, pips=False):
         if not re.fullmatch(r'[a-zA-Z0-9-]{16,80}', installation) or not re.fullmatch(r'[a-fA-F0-9]{32,256}', token):
@@ -54,10 +77,30 @@ class Notifications:
     async def send(self, row, device):
         import jwt
         import httpx
-        token = jwt.encode({'iss': os.environ['APNS_TEAM_ID'], 'iat': int(time.time())}, Path(os.environ['APNS_KEY_FILE']).read_text(), algorithm='ES256', headers={'kid': os.environ['APNS_KEY_ID']})
-        host = 'api.sandbox.push.apple.com' if device['environment']=='sandbox' else 'api.push.apple.com'
-        async with httpx.AsyncClient(http2=True, timeout=15) as client:
-            r = await client.post(f'https://{host}/3/device/{device["token"]}', content=row['body'].encode(), headers={'authorization': 'bearer '+token, 'apns-topic': os.environ['APNS_TOPIC'], 'apns-push-type': 'alert', 'apns-priority': '10', 'apns-expiration': str(int(row['expires'])), 'apns-collapse-id': row['id']})
+        environment = device['environment']
+        credentials = self.credentials(environment)
+        if credentials is None:
+            return 503, 'EnvironmentNotConfigured'
+        key_id, key_file, team, topic = credentials
+        stat = key_file.stat()
+        identity = (key_id, str(key_file), stat.st_mtime_ns, stat.st_size, team, topic)
+        now = int(time.time())
+        cached = self._tokens.get(environment)
+        if cached is None or cached[0] != identity or not 0 <= now-cached[1] < 50*60:
+            token = jwt.encode({'iss': team, 'iat': now}, key_file.read_text(), algorithm='ES256', headers={'kid': key_id})
+            self._tokens[environment] = (identity, now, token)
+        else:
+            token = cached[2]
+        connection = self._clients.get(environment)
+        if connection is None or connection[0] != identity:
+            if connection is not None:
+                await connection[1].aclose()
+            client = httpx.AsyncClient(http2=True, timeout=15)
+            self._clients[environment] = (identity, client)
+        else:
+            client = connection[1]
+        host = 'api.sandbox.push.apple.com' if environment=='sandbox' else 'api.push.apple.com'
+        r = await client.post(f'https://{host}/3/device/{device["token"]}', content=row['body'].encode(), headers={'authorization': 'bearer '+token, 'apns-topic': topic, 'apns-push-type': 'alert', 'apns-priority': '10', 'apns-expiration': str(int(row['expires'])), 'apns-collapse-id': row['id']})
         return r.status_code, (r.json().get('reason', '') if r.content else '')
 
     async def drain(self):
@@ -84,25 +127,28 @@ class Notifications:
             self.db.commit()
 
     async def worker(self):
-        while True:
-            try:await self.drain()
-            except Exception:
-                import logging
-                logging.getLogger('notifications').exception('Notification worker will retry')
-            await asyncio.sleep(10)
+        try:
+            while True:
+                try:await self.drain()
+                except Exception:
+                    import logging
+                    logging.getLogger('notifications').exception('Notification worker will retry')
+                await asyncio.sleep(10)
+        finally:
+            await self.close()
 
     def routes(self, app, require):
         @app.get('/v1/notifications')
         async def status(request: Request):
             require(request)
-            return {'configured': self.configured(), 'pending': self.db.execute("SELECT COUNT(*) FROM outbox WHERE state='pending'").fetchone()[0]}
+            return {'configured': self.configured(), 'environments': {e: self.configured(e) for e in ('sandbox', 'production')}, 'pending': self.db.execute("SELECT COUNT(*) FROM outbox WHERE state='pending'").fetchone()[0]}
 
         @app.post('/v1/notifications/register')
         async def register(request: Request):
             require(request); d=await request.json()
             try: self.register(d.get('installation',''),d.get('token',''),d.get('environment',''),d.get('timers',True),d.get('meetings',True),d.get('pips',False))
             except (ValueError, TypeError) as e: raise HTTPException(422,str(e))
-            return {'configured':self.configured()}
+            return {'configured':self.configured(d['environment'])}
 
         @app.post('/v1/notifications/unregister')
         async def unregister(request: Request):

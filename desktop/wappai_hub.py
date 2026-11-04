@@ -8,9 +8,13 @@ import os
 from pathlib import Path
 import secrets
 import shutil
+import socket
 import subprocess
 import sys
 import threading
+import time
+import urllib.error
+import urllib.request
 import webbrowser
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -28,6 +32,37 @@ def environment():
 
 def doctor():
     return {'python':sys.version.split()[0],'python_supported':sys.version_info>=(3,11),'ffmpeg':bool(shutil.which('ffmpeg')),'tailscale':bool(shutil.which('tailscale')),'claude':bool(shutil.which('claude')),'codex':bool(shutil.which('codex')),'hub_installed':PYTHON.is_file(),'platform':sys.platform}
+
+def check_port_available(port=8770):
+    with socket.socket() as probe:
+        try:probe.bind(('0.0.0.0',port))
+        except OSError as exc:
+            raise RuntimeError(f'Port {port} is already in use. Stop the existing server before starting this Hub.') from exc
+
+def wait_for_hub(process,timeout=45):
+    """A child process existing is not proof that imports/startup succeeded."""
+    deadline=time.monotonic()+timeout
+    # The local readiness probe must not go through an inherited HTTP proxy.
+    opener=urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    while time.monotonic()<deadline:
+        code=process.poll()
+        if code is not None:
+            raise RuntimeError(f'Hub exited during startup (code {code}). See {STATE / "hub.log"}.')
+        try:
+            with opener.open('http://127.0.0.1:8770/api/health',timeout=2) as response:
+                health=json.load(response)
+            if isinstance(health,dict) and health.get('ok') is True and isinstance(health.get('devices'),list):
+                return
+        except (OSError,ValueError,urllib.error.URLError):pass
+        time.sleep(.25)
+    raise RuntimeError(f'Hub did not become ready. See {STATE / "hub.log"}.')
+
+def stop_process(process):
+    if process and process.poll() is None:
+        process.terminate()
+        try:process.wait(timeout=15)
+        except subprocess.TimeoutExpired:
+            process.kill();process.wait(timeout=5)
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--doctor',action='store_true');args=parser.parse_args()
@@ -49,7 +84,8 @@ def main():
         def job():
             nonlocal busy
             try:action()
-            except Exception as exc:write(str(exc))
+            except Exception as exc:
+                write(str(exc));app.after(0,lambda message=str(exc):status.set(message))
             finally:busy=False
         threading.Thread(target=job,daemon=True).start()
     def run(command):
@@ -66,12 +102,18 @@ def main():
         if child and child.poll() is None:write('Already running.');return
         if not PYTHON.exists():raise RuntimeError('Choose Install Hub first.')
         if not shutil.which('ffmpeg'):raise RuntimeError('FFmpeg is missing. Follow the setup guide.')
-        log=(STATE/'hub.log').open('ab')
-        child=subprocess.Popen([str(PYTHON),'-m','uvicorn','app.main:app','--host','0.0.0.0','--port','8770'],cwd=ROOT/'server',env=env,stdout=log,stderr=log);log.close()
-        app.after(0,lambda:status.set('Hub running. Local network access requires your firewall permission.'))
+        check_port_available()
+        app.after(0,lambda:status.set('Starting Hub… checking readiness.'))
+        with (STATE/'hub.log').open('ab') as log:
+            if os.name!='nt':os.chmod(log.name,0o600)
+            child=subprocess.Popen([str(PYTHON),'-m','uvicorn','app.main:app','--host','0.0.0.0','--port','8770'],cwd=ROOT/'server',env=env,stdout=log,stderr=log)
+        try:wait_for_hub(child)
+        except Exception:
+            stop_process(child);child=None;raise
+        app.after(0,lambda:status.set('Hub ready. Local network access requires your firewall permission.'))
     def stop():
         nonlocal child
-        if child and child.poll() is None:child.terminate();child.wait(timeout=15)
+        stop_process(child)
         child=None;app.after(0,lambda:status.set('Hub stopped. Remote requests and notifications are unavailable.'))
     def pair():run([str(PYTHON),'-c','from app import admin; print("One-time app pairing code:",admin.new_code(pair=True)); print("Browser sign-in code:",admin.new_code())'])
     def tailscale():

@@ -75,6 +75,28 @@ def test_cloud_verified_upload_and_delete(tmp_path,monkeypatch):
     receipt=meeting_storage.archive(path);assert receipt['bytes']==5
     meeting_storage.delete_archive(tmp_path);assert deleted==[receipt['key']]
 
+
+@pytest.mark.parametrize('failure',['bucket_changed','remote_missing','remote_changed','local_changed','no_transcript','none'])
+def test_cloud_eviction_revalidates_final_archive(tmp_path,monkeypatch,failure):
+    import hashlib
+    audio=tmp_path/'audio.m4a';audio.write_bytes(b'audio')
+    transcript=tmp_path/'transcript.txt';transcript.write_text('Test transcript')
+    digest=hashlib.sha256(b'audio').hexdigest()
+    receipt={'bucket':'private-test','key':'meetings/'+tmp_path.name+'/audio.m4a','sha256':digest,'bytes':5}
+    audio.with_suffix('.cloud.json').write_text(json.dumps(receipt))
+    monkeypatch.setenv('MEETING_CLOUD_EVICT','1');monkeypatch.setenv('MEETING_S3_BUCKET','private-test')
+    class Fake:
+        def head_object(self,**kwargs):
+            if failure=='remote_missing':raise OSError('Object no longer exists')
+            return {'ContentLength':5,'Metadata':{'sha256':'wrong' if failure=='remote_changed' else digest}}
+    monkeypatch.setattr(meeting_storage,'client',Fake)
+    if failure=='bucket_changed':monkeypatch.setenv('MEETING_S3_BUCKET','different-bucket')
+    if failure=='local_changed':audio.write_bytes(b'other')
+    if failure=='no_transcript':transcript.unlink()
+    meeting_storage.evict(tmp_path)
+    assert audio.exists()==(failure!='none')
+    if failure=='none':assert transcript.exists() and audio.with_suffix('.cloud.json').exists()
+
 def test_push_dedupe_opt_out_and_retry(tmp_path,monkeypatch):
     svc=Notifications(tmp_path/'push.sqlite')
     svc.register('installation-123456','ab'*32,'sandbox',True,True)
@@ -164,6 +186,60 @@ def test_apns_signed_request_and_environment(tmp_path,monkeypatch):
     monkeypatch.setattr(httpx,'AsyncClient',Client);asyncio.run(svc.drain())
     assert len(calls)==1 and svc.db.execute('SELECT state FROM outbox').fetchone()[0]=='sent'
     asyncio.run(svc.drain());assert len(calls)==1
+
+
+def test_apns_scoped_keys_cache_connections_and_rotation(tmp_path,monkeypatch):
+    import jwt,httpx
+    from app import notifications
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.hazmat.primitives import serialization
+    keys={}
+    for env in ('sandbox','production'):
+        key=ec.generate_private_key(ec.SECP256R1());keys[env]=key
+        path=tmp_path/(env+'.p8')
+        path.write_bytes(key.private_bytes(serialization.Encoding.PEM,serialization.PrivateFormat.PKCS8,serialization.NoEncryption()))
+        monkeypatch.setenv('APNS_'+env.upper()+'_KEY_ID',env.upper())
+        monkeypatch.setenv('APNS_'+env.upper()+'_KEY_FILE',str(path))
+    monkeypatch.setenv('APNS_TEAM_ID','TESTTEAM');monkeypatch.setenv('APNS_TOPIC','test.wappai')
+    monkeypatch.setenv('APNS_KEY_FILE',str(tmp_path/'missing-legacy'))
+    svc=Notifications(tmp_path/'scoped.sqlite');clients=[];calls=[]
+    clock=[1700000000];monkeypatch.setattr(notifications.time,'time',lambda:clock[0])
+    class Client:
+        def __init__(self,**kwargs):self.closed=False;clients.append(self)
+        async def aclose(self):self.closed=True
+        async def post(self,url,content,headers):
+            env='sandbox' if 'sandbox' in url else 'production'
+            token=headers['authorization'][7:]
+            assert jwt.get_unverified_header(token)['kid']==env.upper()
+            claims=jwt.decode(token,keys[env].public_key(),algorithms=['ES256'],options={'verify_iat':False})
+            assert claims['iss']=='TESTTEAM'
+            calls.append((env,token,self));return httpx.Response(200)
+    monkeypatch.setattr(httpx,'AsyncClient',Client)
+    row={'body':'{}','expires':clock[0]+3600,'id':'test'}
+    async def run():
+        for env in ('sandbox','sandbox','production'):
+            assert await svc.send(row,{'environment':env,'token':'ab'*32})==(200,'')
+        assert len(clients)==2 and calls[0][1:]==calls[1][1:]
+        clock[0]+=2999
+        await svc.send(row,{'environment':'sandbox','token':'ab'*32})
+        assert calls[-1][1]==calls[0][1]
+        clock[0]+=1
+        await svc.send(row,{'environment':'sandbox','token':'ab'*32})
+        assert calls[-1][1]!=calls[0][1] and len(clients)==2
+        # A partial scoped configuration must never fall back to another key.
+        monkeypatch.delenv('APNS_PRODUCTION_KEY_FILE')
+        assert svc.configured('sandbox') and not svc.configured('production')
+        assert await svc.send(row,{'environment':'production','token':'ab'*32})==(503,'EnvironmentNotConfigured')
+        assert len(calls)==5
+        # Replacing a key starts a fresh connection; other environments stay separate.
+        path=tmp_path/'sandbox-rotated.p8'
+        path.write_bytes((tmp_path/'sandbox.p8').read_bytes())
+        monkeypatch.setenv('APNS_SANDBOX_KEY_FILE',str(path))
+        await svc.send(row,{'environment':'sandbox','token':'ab'*32})
+        assert len(clients)==3 and clients[0].closed
+        await svc.close()
+        assert all(client.closed for client in clients)
+    asyncio.run(run())
 
 
 def test_pip_notification_migrates_existing_preferences_and_opt_out(tmp_path,monkeypatch):
