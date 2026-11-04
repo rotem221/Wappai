@@ -1,0 +1,19 @@
+{
+  "tool": "built-in imagegen",
+  "date": "2026-11-04",
+  "style": "Emerald pixel W is the first letter of Wappai",
+  "prompts": {
+    "symbol": "Use case: background-extraction / logo-brand. Extract ONLY the pixel-art W at the LEFT of this supplied Wappai wordmark. Remove the letters appai completely. Preserve the W exactly: broad stepped dark emerald silhouette, two mint square highlights at the raised upper ends, bright emerald inverted-V center. Clean crisp squared edges with NO glow, NO fog and NO cast shadow. The rest of the canvas must be fully transparent, including the negative space inside the W. One standalone W centered on a SQUARE canvas, scaled to fill 80% of the square's width. This is a square app brand symbol asset, NOT a wordmark. Preserve all geometry/color blocks of the reference W, do not invent a face. No surrounding background, no border, no rounded icon tile.",
+    "wordmark": "Use case: logo-brand / precise-object-edit. Clean up the supplied Wappai wordmark into a sharp, professional transparent brand asset. Keep the exact design and arrangement of reference 1: the pixel-art emerald W is the first letter, followed directly by the pixel-block lowercase letters appai. Exact reading must be Wappai (W-a-p-p-a-i); do NOT add a second W and do NOT put an icon beside a separate full word. Preserve the distinctive W icon's two mint square raised tips, dark emerald stepped arms and bright mint central bridge. Reference 2 is its newly generated matching standalone symbol. Make all contours crisp and aligned, with clean rectangular pixels and restrained internal color blocks. The letters appai should be dark forest green #084839, bold, well spaced and legible, like reference 1. Remove white background and remove all external haze/glow/drop shadows. Fully transparent alpha background, including all counters inside a,p,p,a. Horizontal logo only, centered with minimal safe padding, wide composition approximately 3:1. No other text or graphics, no background rectangle.",
+    "app_icon": "Use case: logo-brand / precise-object-edit. Production iOS app icon using EXACTLY the provided pixel-art W symbol. Keep its precise stepped shape and emerald/mint color blocks without redesign. Center the complete W at about 78% of canvas width on a solid very pale warm mint background #F1F6EF. 1024 by 1024 square, full bleed opaque background, no rounded corners baked in, no border, no shadow, no neon haze. No text, no face, no additional graphics. Crisp pixel edges. The result is an opaque platform app-icon derivative; preserve the supplied W design exactly.",
+    "screen_symbol": "Use case: logo-brand / precise-object-edit. Create a dark-display variant of this exact transparent pixel W. Keep the W geometry, all steps and square color blocks unchanged. Brighten ONLY the darkest body pixels from near-black forest green to medium emerald #168568, so the whole W remains easily visible when placed on a black AMOLED screen. Keep the mint upper squares and turquoise central bridge. No change to framing or composition. No glow, no haze, no shadow, no outline, no new details. Actual transparent background, square canvas. This is still the same Wappai brand symbol, only higher contrast for dark screens."
+  },
+  "masters": [
+    "pixel-source/symbol.png",
+    "pixel-source/wordmark.png",
+    "pixel-source/app-icon.png",
+    "pixel-source/screen-symbol.png"
+  ],
+  "preparation": "Native CoreGraphics platform packaging, nearest-neighbor resizing and transparent wordmark bounds trimming. App icon opaque; symbol and wordmark retain alpha.",
+  "dark_variant": "Runtime template tint / CSS filter preserves the same wordmark silhouette."
+}

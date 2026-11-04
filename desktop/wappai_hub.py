@@ -71,7 +71,13 @@ def main():
     from tkinter import ttk,messagebox
     env=environment();child=None
     app=tk.Tk();app.title('Wappai Hub');app.geometry('680x540')
-    title=ttk.Label(app,text='Wappai Hub',font=('',26,'bold'));title.pack(pady=18)
+    brand_path=ROOT/'assets'/'brand'/'wappai-hub-wordmark.png'
+    if brand_path.is_file():
+        app.brand_image=tk.PhotoImage(file=str(brand_path))
+        ttk.Label(app,image=app.brand_image).pack(pady=(18,4))
+        ttk.Label(app,text='Hub',font=('',14,'bold')).pack(pady=(0,10))
+    else:
+        ttk.Label(app,text='Wappai Hub',font=('',26,'bold')).pack(pady=18)
     ttk.Label(app,text='Your computer is your Hub. Keep it running for remote access.').pack()
     status=tk.StringVar(value='Ready — run Check setup first.');ttk.Label(app,textvariable=status,wraplength=620).pack(pady=12)
     output=tk.Text(app,height=15,wrap='word');output.pack(fill='both',expand=True,padx=18,pady=10)

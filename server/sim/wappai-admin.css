@@ -121,3 +121,8 @@ html[data-theme="dark"] button.primary {
     padding: 15px 12px 32px;
   }
 }
+header .logo.brand-wordmark{width:160px;height:auto;border:0;border-radius:0;background:none;image-rendering:pixelated}
+header #name{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+html[data-theme="dark"] .brand-wordmark{filter:brightness(0) invert(1);opacity:.94}
+@media(prefers-color-scheme:dark){html[data-theme="system"] .brand-wordmark{filter:brightness(0) invert(1);opacity:.94}}
+@media(max-width:500px){header .logo.brand-wordmark{width:130px}}

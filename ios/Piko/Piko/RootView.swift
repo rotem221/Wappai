@@ -143,6 +143,7 @@ struct RootView:View {
     private var welcome:some View {
         ScrollView{VStack(spacing:22){
             DeviceIllustration().padding(.top,35).padding(.bottom,15)
+            WappaiWordmark().frame(width:220,height:52)
             Text("קטן בכף היד.\nקרוב לכל מה שחשוב.").font(.largeTitle.bold()).multilineTextAlignment(.center)
             Text("הדמות שלך, הקול שלך, העוזר שלך.").foregroundStyle(.secondary)
             Button{showPairing=true}label:{Label("חיבור מכשיר קרוב",systemImage:"antenna.radiowaves.left.and.right").frame(maxWidth:.infinity).padding(8)}.buttonStyle(.borderedProminent).controlSize(.large)

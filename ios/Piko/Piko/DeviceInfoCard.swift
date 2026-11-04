@@ -21,7 +21,7 @@ struct DeviceInfoCard:View {
                 WappaiDevice3D(hardware:actualHardware,animated:false).id(actualHardware)
                     .frame(width:88,height:96).allowsHitTesting(false).accessibilityHidden(true)
                 VStack(alignment:.leading,spacing:5){
-                    Text("Wappai").font(.title3.weight(.semibold))
+                    WappaiWordmark().frame(width:130,height:31)
                     Text("Waveshare · \(actualHardware.title)").font(.subheadline).foregroundStyle(.secondary)
                     Label(live ? "מחובר":connected ? "לא מחובר":"ממתין לעדכון",systemImage:live ? "checkmark.circle.fill":"circle.dotted")
                         .font(.caption).foregroundStyle(live ? Color.green:Color.secondary)

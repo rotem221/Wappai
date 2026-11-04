@@ -1307,3 +1307,8 @@ body[data-theme="dark"] .message.user {
 .pip-tile.job {min-width:0;display:flex;flex-direction:column;gap:10px;text-align:center}
 .pip-tile.job .pip-preview {height:160px;width:100%;object-fit:contain;margin:0}
 .pip-tile.job .actions {justify-content:center}
+/* Wappai pixel identity; transparent master with a legible monochrome dark variant. */
+.brand-wordmark{object-fit:contain;image-rendering:pixelated}
+.login .login-wordmark{width:min(270px,75vw);height:auto;margin:0 0 32px}
+.drawer-brand img.brand-wordmark{width:176px;height:auto;border-radius:0}
+body[data-theme="dark"] .brand-wordmark{filter:brightness(0) invert(1);opacity:.94}

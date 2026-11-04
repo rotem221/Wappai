@@ -2,6 +2,17 @@ import SwiftUI
 import RealityKit
 import simd
 
+struct WappaiWordmark:View {
+    @Environment(\.colorScheme) private var scheme
+    var body:some View {
+        Image("WappaiWordmark")
+            .renderingMode(scheme == .dark ? .template:.original)
+            .resizable().interpolation(.none).scaledToFit()
+            .foregroundStyle(Color(red:0.78,green:1,blue:0.9))
+            .accessibilityLabel("Wappai")
+    }
+}
+
 // Dimensions and silhouette from Waveshare drawings in docs/wappai/hardware-reference.
 // Local geometry keeps the turntable interactive and works without network access.
 enum WappaiHardware:String,CaseIterable,Identifiable {

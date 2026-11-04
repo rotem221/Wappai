@@ -1,6 +1,5 @@
 <div align="center">
-<img src="assets/brand/wappai-screen-mark.png" width="120" alt="Wappai logo">
-<h1>Wappai</h1>
+<img src="assets/brand/wappai-wordmark.png" width="330" alt="Wappai">
 <p>A little companion. An open world of possibilities.</p>
 <p>Hebrew-first pocket AI · ESP32-S3 · SwiftUI · Web · Claude / Codex</p>
 </div>
