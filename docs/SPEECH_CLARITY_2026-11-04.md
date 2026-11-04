@@ -39,6 +39,26 @@ The speaker task reported playback start **0.523 seconds** after the HTTP reques
 
 This verifies delivery to the physical playback task and completion, not acoustic clarity or freedom from audible artifacts. It excludes microphone capture, transcription and model reasoning, so it must not be compared directly with the full-turn latency table above. No firmware or power settings were changed. Subjective speaker quality and a fresh physical BOOT/microphone conversation still require a listening test; battery endurance was not measured.
 
+## Full acoustic microphone conversation
+
+The user confirmed that the preceding direct speaker sample was clear and pleasant. The next check exercised the physical microphone: the Mac's built-in speakers played two generated Hebrew WAV fixtures aloud, and the ESP32 captured them through its microphone. No input PCM was injected into the server. Serial `bootsim` commands exercised the existing long-press/release BOOT handler; this was not a fresh test of a human pressing the mechanical switch.
+
+Three turns used a temporary Claude conversation. The first asked the assistant to remember a purple umbrella. The next two asked which object had been selected and requested a readiness question addressed according to the user's preference. The same follow-up fixture was used for both address settings.
+
+| Turn | User address setting | Observed answer | Recording end → reply playback |
+| --- | --- | --- | ---: |
+| Remember the object | Masculine | “זכרתי שהחפץ שבחרת הוא מטריה סגולה” | 8.390 s |
+| Follow-up | Masculine | “החפץ שבחרת הוא מטריה סגולה … האם אתה מוכן לצאת איתה?” | 5.284 s |
+| Same follow-up after changing preference | Feminine | “בחרת מטריה סגולה … את מוכנה לצאת איתה?” | 8.063 s |
+
+Times use the ESP32's own millisecond timestamps for `ptt: stop` and `spk: on`. Playback events were correlated with the first received answer PCM to exclude both the release chirp and local thinking sounds. An initial diagnostic calculation mistakenly selected the chirp; the table above is the corrected speech measurement. These measurements include microphone buffering, network delivery, recognition, model generation, TTS and device playback buffering. They are not comparable to the 0.523-second ready-text speaker check.
+
+Recognition retained the object and the follow-up question in all three turns. Context survived both a follow-up and the Claude process refresh triggered by changing the preference. Server recognition timing was 1.12–1.33 seconds; logged first-token timing was 4.72–7.41 seconds from the server turn timer (which includes recognition). Model response time was the largest measured wait, with additional transport/buffering variability. Three samples are insufficient for a percentile or general latency guarantee.
+
+The requested masculine/feminine *user address* checks passed. A separate limitation was observed: with character self-reference set to neutral, the masculine-address response included “אני שואל”. The user-facing address was correct, but neutral character self-reference is not fully reliable from prompting alone; do not interpret this test as complete grammatical compliance in every response.
+
+The temporary conversation was deleted, original active conversation and both voice preferences restored and verified via the live API, and the Mac's original muted volume restored. The device remained online with recording off; serial telemetry confirmed the microphone receiver returned to `rx=0`. No firmware, power policy or voice selection was changed. The test validates controlled acoustic input, not the user's natural voice in a noisy room or battery endurance.
+
 ## Restore points and references
 
 - Private Git tag: `backup/pre-speech-clarity-20261104`.
