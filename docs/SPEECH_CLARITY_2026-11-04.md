@@ -71,6 +71,8 @@ The same two acoustic fixtures at the same Mac volume were first rerun on the de
 
 Firmware, microphone gain, PCM format, playback buffering, STT decoding/tail padding, selected TTS voice/model and device power policy were unchanged. Mac volume and application speech preferences were restored after each automated run. Restore points: Git tag `backup/pre-mic-latency-20261104` and the private Hub backup `/var/backups/wappai/20261104-mic-latency/`.
 
+Final verification status: all automated physical runs completed microphone capture, recognition, generation and speaker playback, and retained the umbrella context with the configured user address. Unrelated speech was still present in several recordings, including after the user reported readiness for a quiet test. The three inspected YouTube players were paused; no browser playback setting was changed. A manual BOOT test was then armed for five minutes, but no recording was started. It timed out and cleaned up normally: the original active conversation and speech preferences were verified restored through the live API, the temporary conversation was deleted, the device remained online with recording off, and the original muted Mac output volume was restored. A clean final natural-voice latency comparison remains pending; do not describe the noisy final samples as a completed controlled benchmark.
+
 The existing streaming-JSON interface remains in use; see [Claude Code's official programmatic usage documentation](https://code.claude.com/docs/en/headless). Bare mode was not adopted because the documented mode does not use the existing subscription login.
 
 ## Restore points and references
