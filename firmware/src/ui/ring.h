@@ -3,8 +3,10 @@
 #include <stdint.h>
 
 enum RingShape : uint8_t { RS_OFF, RS_PROGRESS, RS_COMET, RS_FULL };
+enum RingContour : uint8_t { RC_AUTO, RC_CIRCLE, RC_ROUNDED_RECT };
 
 struct RingStyle {
+    RingContour contour = RC_AUTO; // 466x466 round board; other panels follow their bezel.
     RingShape mode = RS_OFF;
     float progress = 0;     // 0..1 for RS_PROGRESS (clockwise from 12 o'clock)
     float head = 0;         // radians for RS_COMET

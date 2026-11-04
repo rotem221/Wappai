@@ -212,6 +212,13 @@ static void startRecording() {
     if (manualLocked || recording || model.assetBusy) return;
     wake(true);
     showFace();
+    modelLock();bool canTalk=model.wifi && model.server;bool hasWiFi=model.wifi;modelUnlock();
+    if (!canTalk) {
+        face.setEmotion("disconnected");ringMode=RING_NONE;
+        strlcpy(sub,hasWiFi ? "אין חיבור לשרת. נסו שוב כשיתחבר":"אין חיבור לרשת Wi-Fi",sizeof sub);
+        subUntil=millis()+4500;
+        return;
+    }
     audioStop();
     audioChirp(true);
     // The listening indicator is local; capture starts without a blocking chirp delay.
@@ -385,7 +392,7 @@ static void pollInputs(uint32_t now) {
     bool b = bStable;
     if(!raw && !b && !bootDown)bootUnlockConsumed=false;
     if (b && !bootDown) { bootDown = true; bootHoldStarted=false; bootT0 = now; if(manualLocked){setManualLock(false);bootUnlockConsumed=true;}else wake(true); }
-    if (model.holdToTalk && !bootHoldStarted && !bootUnlockConsumed && !provisioningPrompt() && !gallery && b && bootDown && !recording && !meeting && since(now, bootT0) > PTT_HOLD_MS) {startRecording();bootHoldStarted=recording;}
+    if (model.holdToTalk && !bootHoldStarted && !bootUnlockConsumed && !provisioningPrompt() && !gallery && b && bootDown && !recording && !meeting && since(now, bootT0) > PTT_HOLD_MS) {startRecording();bootHoldStarted=true;}
     if (b && bootDown && meeting) bootT0 = now;               // no push-to-talk while a meeting records
     if (!b && bootDown) {
         bootDown = false;
@@ -393,7 +400,7 @@ static void pollInputs(uint32_t now) {
         else if (provisioningConfirm(true)) { faceNeedsClear = true; }
         else if (gallery) { gallery = false; faceNeedsClear = true; face.setPip(model.pip, model.pipColor); }
         else if (meeting) stopMeeting();
-        else if (model.holdToTalk) { if (recording) stopRecording(); else bootTap(); }
+        else if (model.holdToTalk) { if (recording) stopRecording(); else if (!bootHoldStarted) bootTap(); }
         else if (recording) stopRecording();
         else { netSend("{\"type\":\"interrupt\"}"); startRecording(); }
     }
@@ -1019,6 +1026,7 @@ static void render(uint32_t now) {
         ringDraw((uint16_t*)scr.getBuffer(),SCREEN_W,SCREEN_H,true,rs,ringUntouched);
     }
     if(fullClear)dirty={0,0,SCREEN_W,SCREEN_H};
+    if(edgeChanged && dirty.empty())dirty={0,0,2,2}; // Flush the edge even if the character is unchanged.
     ringDrawn = ringOn;
     uint32_t q4 = micros(); tRing += q4 - q3;
     if (!dirty.empty()) { lcd.flush(scr, dirty.x0, dirty.y0, dirty.x1 - dirty.x0, dirty.y1 - dirty.y0,edgeChanged); nDirtyPx += (dirty.x1 - dirty.x0) * (dirty.y1 - dirty.y0); }

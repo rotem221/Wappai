@@ -55,6 +55,10 @@ struct RootView:View {
                          .onChange(of:client.messages.count){_,_ in withAnimation{proxy.scrollTo("end",anchor:.bottom)}}
                          .onChange(of:client.messages.last?.text){_,_ in proxy.scrollTo("end",anchor:.bottom)}
                     }
+                    if !client.deviceOnline {
+                        Label(client.connected ? "המכשיר מנותק — דיבור דרך המכשיר אינו זמין. אפשר להמשיך לכתוב כאן.":"אין חיבור לשרת — מנסה להתחבר מחדש…",systemImage:"wifi.slash")
+                            .font(.footnote).foregroundStyle(.secondary).padding(.horizontal,16).padding(.vertical,8).accessibilityIdentifier("deviceOfflineNotice")
+                    }
                     if !client.error.isEmpty {Text(client.error).font(.caption).foregroundStyle(.orange).padding(8).accessibilityIdentifier("connectionError")}
                 }
             }
@@ -66,7 +70,7 @@ struct RootView:View {
                     VStack(spacing:2){
                         Text(client.sessions.first(where:{$0.id==client.active})?.title ?? "Wappai")
                             .font(.headline).lineLimit(1).truncationMode(.tail)
-                        Text(!client.connected && client.paired ? "מתחבר…":client.device.online ? "המכשיר מחובר":"המכשיר לא מחובר")
+                        Text(client.connectionLabel)
                             .font(.caption2).foregroundStyle(.secondary)
                     }.accessibilityElement(children:.combine)
                 }

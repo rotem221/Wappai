@@ -25,12 +25,33 @@ static void *tlsCalloc(size_t count,size_t size) {
 
 Model model;
 static SemaphoreHandle_t mtx;
+static bool radioDiagnostic=false;
+static void radioStage(const char *stage) {
+    if(!radioDiagnostic)return;
+    WiFi.setAutoReconnect(false);WiFi.disconnect(false,false);WiFi.setSleep(false);
+    int n=WiFi.scanNetworks(false,true,true,400);
+    Serial.printf("radio stage %s: %d networks, heap %u\n",stage,n,ESP.getFreeHeap());
+    for(int i=0;i<n;i++)Serial.printf("  channel %d RSSI %d\n",WiFi.channel(i),WiFi.RSSI(i));
+    WiFi.scanDelete();
+}
 // Recursive: a helper that locks (e.g. markActivity) may run inside a locked section without deadlocking.
 void modelLock() { xSemaphoreTakeRecursive(mtx, portMAX_DELAY); }
 void modelUnlock() { xSemaphoreGiveRecursive(mtx); }
 
 static void serialCommands() {
     static String line;
+    static bool scanPending=false;
+    static uint32_t scanSequence=0;
+    if(scanPending) {
+        modelLock();
+        if(model.scanSeq!=scanSequence && !model.scanBusy) {
+            String saved=netSavedSsid();
+            Serial.printf("scan: %u networks (saved name: %s)\n",model.nAps,saved.c_str());
+            for(int i=0;i<model.nAps;i++)Serial.printf("  [%s] %ddBm%s\n",model.aps[i].ssid,model.aps[i].rssi,saved==model.aps[i].ssid ? " <== saved":"");
+            scanPending=false;
+        }
+        modelUnlock();
+    }
     while (Serial.available()) {
         char c = Serial.read();
         if (c != '\n' && c != '\r') { line += c; continue; }
@@ -45,14 +66,7 @@ static void serialCommands() {
             if (tab > 0) netSetWifi(rest.substring(0, tab), rest.substring(tab + 1));
         }
         else if (line == "scan") {
-            int n = WiFi.scanNetworks(false, true);
-            String saved = netSavedSsid();
-            Serial.printf("scan: %d networks (saved name: %d chars)\n", n, saved.length());
-            for (int i = 0; i < n; i++)
-                Serial.printf("  [%s] ch%d %ddBm %s%s\n", WiFi.SSID(i).c_str(), WiFi.channel(i), WiFi.RSSI(i),
-                              WiFi.encryptionType(i) == WIFI_AUTH_OPEN ? "open" : "secured",
-                              WiFi.SSID(i) == saved ? "  <== saved (exact)" : (WiFi.SSID(i).equalsIgnoreCase(saved) ? "  <== saved (case differs!)" : ""));
-            WiFi.scanDelete();
+            modelLock();scanSequence=model.scanSeq;model.scanReq=true;modelUnlock();scanPending=true;
         }
         else if (line == "net") Serial.printf("wifi %d ssid '%s' ip %s rssi %d\n", WiFi.status(), WiFi.SSID().c_str(), WiFi.localIP().toString().c_str(), WiFi.RSSI());
         else if (line == "bleoff") { provisioningEnd();Serial.printf("BLE stopped, heap %u largest %u\n",ESP.getFreeHeap(),ESP.getMaxAllocHeap()); }
@@ -87,7 +101,7 @@ void setup() {
     mbedtls_platform_set_calloc_free(tlsCalloc,heap_caps_free);
     WiFi.mode(WIFI_STA);
     esp_wifi_set_country_code("IL",true);
-    { Preferences p;p.begin("wappai-diag",false);bool test=p.getBool("radio",false);p.remove("radio");p.end();
+    { Preferences p;p.begin("wappai-diag",false);bool test=p.getBool("radio",false);if(test)p.remove("radio");p.end();radioDiagnostic=test;
       if(test){
         delay(1500);WiFi.setAutoReconnect(false);WiFi.disconnect(false,false);WiFi.setSleep(false);
         for(bool passive:{false,true}){
@@ -99,9 +113,12 @@ void setup() {
       }
     }
     provisioningBegin();
+    radioStage("bluetooth");
     Serial.printf("radios: heap %u largest %u\n",ESP.getFreeHeap(),ESP.getMaxAllocHeap());
     appBegin();
+    radioStage("display");
     bool audio = audioBegin();
+    radioStage("audio");
     {   // mic tuning saved with the serial commands micgain / micch
         Preferences p;
         p.begin("audio", true);

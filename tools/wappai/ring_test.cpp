@@ -11,7 +11,7 @@ int main(){
   auto *px=actual.data()+32;
   for(bool swapped:{false,true})for(auto mode:{RS_FULL,RS_COMET,RS_PROGRESS})for(int frame=0;frame<16;frame++){
    std::fill(px,px+N,0);std::fill(reference.begin(),reference.end(),0);
-   RingStyle s;s.mode=mode;s.head=frame*6.2831853f/16;s.progress=frame/15.f;s.thickness=5+frame%10;s.glow=frame/15.f;
+   RingStyle s;s.contour=RC_CIRCLE;s.mode=mode;s.head=frame*6.2831853f/16;s.progress=frame/15.f;s.thickness=5+frame%10;s.glow=frame/15.f;
    ringDraw(px,W,H,swapped,s);ringDrawFallback(reference.data(),W,H,swapped,s);
    double error=0;int pixels=0;
    for(size_t i=0;i<N;i++){
@@ -41,5 +41,18 @@ int main(){
   ringDraw(incremental.data(),466,466,false,st,!repair);
   assert(incremental==complete);
  }
- puts("Ring: 5 canvas sizes, byte orders, 3 modes x 16 frames, AA reference tolerance, clearing and guard bounds passed");
+ for(auto wh:{std::pair<int,int>{368,448},{480,480}}){
+  int W=wh.first,H=wh.second;std::vector<uint16_t> buffer(W*H+64,0xdead);auto px=buffer.data()+32;
+  std::fill(px,px+W*H,0);RingStyle s;s.mode=RS_FULL;s.track=0;s.thickness=8;
+  ringDraw(px,W,H,false,s);
+  // A rectangular frame reaches all four side midpoints, with rounded corners.
+  int inset=(int)(fminf(W,H)*.035f);
+  assert(px[inset*W+W/2] && px[(H/2)*W+inset]);
+  assert(px[(H-1-inset)*W+W/2] && px[(H/2)*W+W-1-inset]);
+  assert(!px[(H/2)*W+W/2] && !px[inset*W+inset]);
+  for(auto mode:{RS_COMET,RS_PROGRESS})for(int frame=0;frame<60;frame++){s.mode=mode;s.head=frame*.2f;s.progress=frame/59.f;ringDraw(px,W,H,true,s);}
+  s.mode=RS_OFF;ringDraw(px,W,H,true,s);for(int i=0;i<W*H;i++)assert(px[i]==0);
+  for(int i=0;i<32;i++)assert(buffer[i]==0xdead && buffer[W*H+32+i]==0xdead);
+ }
+ puts("Circle and rounded-rectangle frames: reference, bounds, four edges, animation and clearing passed");
 }

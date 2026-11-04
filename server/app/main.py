@@ -495,7 +495,7 @@ async def ws_endpoint(ws: WebSocket):
                 if conn.kind == "board":
                     hub.device.update({k: v for k, v in data.items() if k != "type"})
                     battery.record(data.get("battery"))
-                await hub.emit(data, only_kind="sim")
+                    await hub.emit(data, only_kind="sim")
             elif t == "ptt_start" and data.get("mode") == "meeting":
                 hub.interrupt()
                 resume = str(data.get("resume") or "")

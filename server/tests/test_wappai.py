@@ -48,6 +48,23 @@ def test_event_cursor_and_message_upsert():
     assert len(store.rows('SELECT * FROM messages'))==1
     assert store.rows('SELECT text FROM messages')[0]['text']=='שלום עולם'
 
+def test_event_connect_reconciles_hardware_even_without_new_events(monkeypatch):
+    h=auth();cursor=c.get('/v1/snapshot',headers=h).json()['cursor']
+    monkeypatch.setattr(hub,'device',{'board':'ws-s3-175c','battery':{'pct':71}})
+    monkeypatch.setattr(hub,'conns',[types.SimpleNamespace(kind='board')])
+    with c.websocket_connect('/v1/events?after='+str(cursor),headers=h) as ws:
+        event=ws.receive_json()
+        assert event['type']=='device.connection' and event['online'] is True
+        assert event['device']['battery']['pct']==71
+    monkeypatch.setattr(hub,'conns',[])
+    with c.websocket_connect('/v1/events?after='+str(cursor),headers=h) as ws:
+        assert ws.receive_json()['online'] is False
+
+def test_device_telemetry_is_global_not_tied_to_chat():
+    asyncio.run(wappai.observe({'type':'status','rssi':-55}))
+    event=wappai.store.events(0)[-1]
+    assert event['type']=='status' and 'session_id' not in event
+
 def test_busy_session_conflict():
     class Busy:
         def done(self):return False
@@ -185,6 +202,7 @@ def test_live_partial_is_ephemeral_and_reaches_client():
     cursor=wappai.store.db.execute('SELECT COALESCE(MAX(cursor),0) FROM events').fetchone()[0]
     with TestClient(app) as live:
         with live.websocket_connect(f'/v1/events?after={cursor}',headers=h) as ws:
+            assert ws.receive_json()['type']=='device.connection'
             live.portal.call(wappai.observe,{'type':'transcript.partial','text':'תמלול חי'})
             event=ws.receive_json()
             assert event['type']=='transcript.partial' and event['text']=='תמלול חי' and 'cursor' not in event

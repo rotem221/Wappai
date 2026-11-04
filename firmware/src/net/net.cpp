@@ -420,21 +420,36 @@ static void fixSae() {
 // Then: stop the connection attempt (only when not connected), wait, and try again, so the list is never empty
 // just because of timing.
 static int scanRobust() {
+    const bool autoReconnect=WiFi.getAutoReconnect();
+    // The network task owns scans. Stop association first: scanning while a
+    // reconnect is in flight returns -2, which must not look like an empty room.
+    if (WiFi.status() != WL_CONNECTED) {
+        WiFi.setAutoReconnect(false);
+        WiFi.disconnect(false, false);
+        delay(100);
+    }
+    wifi_ps_type_t previousSleep=WIFI_PS_MIN_MODEM;
+    esp_wifi_get_ps(&previousSleep);
+    WiFi.setSleep(false);
     int n = -2;
-    for (int attempt = 0; attempt < 4; attempt++) {
+    for (int attempt = 0; attempt < 3; attempt++) {
         if (WiFi.scanComplete() == WIFI_SCAN_RUNNING) {
             for (uint32_t t0 = millis(); WiFi.scanComplete() == WIFI_SCAN_RUNNING && millis() - t0 < 6000;) delay(50);
         }
         WiFi.scanDelete();
-        n = WiFi.scanNetworks(false, true, false, 220);
+        // Longer dwell catches weak beacons; the last pass also supports APs
+        // which did not respond to active probes. Only during an explicit scan.
+        n = WiFi.scanNetworks(false, true, attempt == 2, 400);
         Serial.printf("wifi: scan try %d -> %d (status %d)\n", attempt + 1, n, WiFi.status());
-        if (n > 0) return n;
+        if (n > 0) break;
         if (WiFi.status() != WL_CONNECTED) {
             WiFi.setAutoReconnect(false);
             WiFi.disconnect(false, false);
         }
         delay(400 + attempt * 400);
     }
+    WiFi.setSleep(previousSleep);
+    WiFi.setAutoReconnect(autoReconnect);
     return n < 0 ? 0 : n;
 }
 
@@ -481,7 +496,7 @@ static void connectWifi() {
     String ss = prefs.getString("ssid", ""), pw = prefs.getString("pass", "");
     {
         // scan once at boot: lets the setup script offer a pick-list, and fixes a saved name that differs only in case
-        int n = WiFi.scanNetworks(false, true);
+        int n = scanRobust();
         int best=-128; String chosen=ss, chosenPassword=pw;
         for (int i = 0; i < n; i++) {
             String visible=WiFi.SSID(i);

@@ -108,7 +108,7 @@ void LGFX::flush(LGFX_Sprite &s, int x, int y, int w, int h, bool edgeBand) {
     for (int yy = firstRow; yy < lastRow; yy += rows) {
         int bh = min(rows, lastRow - yy);
         // One TE sync for the entire frame, up to three merged regions per band.
-        auto regions=displaySpans(x,x1,y,y1,yy,bh,edgeBand);
+        auto regions=displaySpans(x,x1,y,y1,yy,bh,edgeBand,WIDTH,HEIGHT,WIDTH==466 && HEIGHT==466);
         for(int i=0;i<regions.count;i++){
             int left=regions.spans[i].left,bw=regions.spans[i].right-left;
             waitDMA();

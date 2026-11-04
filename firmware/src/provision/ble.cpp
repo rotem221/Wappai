@@ -127,7 +127,19 @@ void provisioningLoop() {
 }
 
 void provisioningEnd() {
- if(!enabled) return; enabled=false;prompt=false;connected=false;authorized=false;authenticated=false;
+ if(!enabled) return; enabled=false;prompt=false;authorized=false;authenticated=false;
+ // Arduino's NimBLE deinit deletes the server before draining disconnect
+ // callbacks. Disconnect peers while the server is still alive to avoid UAF.
+ BLEDevice::getAdvertising()->stop();
+ auto *server=BLEDevice::getServer();
+ if(server) {
+  for(const auto &peer:server->getPeerDevices(false))server->disconnect(peer.first);
+  uint32_t start=millis();
+  while(server->getConnectedCount() && millis()-start<2000)delay(20);
+  if(server->getConnectedCount()) {enabled=true;return;}
+  delay(100);
+ }
+ connected=false;
  BLEDevice::deinit(false);
  String *raw;while(xQueueReceive(commands,&raw,0)==pdTRUE)delete raw;
  vQueueDelete(commands);commands=nullptr;rx=nullptr;tx=nullptr;

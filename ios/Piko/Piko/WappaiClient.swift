@@ -49,9 +49,12 @@ enum SecureStore {
     @Published var server=UserDefaults.standard.string(forKey:"wappai.server") ?? ""
     private var socket:URLSessionWebSocketTask?
     private var loop:Task<Void,Never>?
+    private var connectionGeneration=0
     private var cursor=0
     private var token:String { SecureStore.get("hub.token."+server) ?? "" }
     var busy:Bool { ["thinking","working","speaking","listening"].contains(state) }
+    var deviceOnline:Bool {connected && device.online}
+    var connectionLabel:String { !connected ? "אין חיבור לשרת" : device.online ? "המכשיר מחובר" : "המכשיר לא מחובר" }
     var uiTesting:Bool {
         #if DEBUG
         return ProcessInfo.processInfo.arguments.contains("--qa-ui-fixture")
@@ -63,6 +66,7 @@ enum SecureStore {
         paired = !token.isEmpty
         if uiTesting {
             paired=true;connected=true;device=DeviceStatus(online:true,fw_version:"1.0.0-dev",battery:.init(pct:75,charging:false),rssi:-55,board:"ws-s3-175c")
+            if ProcessInfo.processInfo.arguments.contains("--qa-device-offline") {device.online=false}
             active="ui-qa";sessions=[.init(id:active,title:"בדיקת ממשק",provider:"codex",created:0)]
             messages=[.init(id:"qa-message",session_id:active,role:"assistant",text:"בדיקה מקומית ללא חיבור לשרת",created:0)]
             chosenID="pip";chosenPip=0;chosenColor=0
@@ -146,23 +150,39 @@ enum SecureStore {
     }
     func start() {
         guard paired && !uiTesting else{return}; stop()
+        let generation=connectionGeneration
         loop=Task {
             var delay=1
             while !Task.isCancelled {
                 do {
                     try await refresh()
+                    guard !Task.isCancelled,generation==connectionGeneration else{return}
                     var components=URLComponents(url:try url("/v1/events"),resolvingAgainstBaseURL:false)!
                     components.scheme="wss";components.queryItems=[.init(name:"after",value:String(cursor))]
                     var request=URLRequest(url:components.url!);request.setValue("Bearer "+token,forHTTPHeaderField:"Authorization")
-                    let ws=URLSession.shared.webSocketTask(with:request);socket=ws;ws.resume();connected=true;error="";delay=1
+                    let ws=URLSession.shared.webSocketTask(with:request);socket=ws;ws.resume();error="";delay=1
                     while !Task.isCancelled {
                         let message=try await ws.receive()
+                        guard !Task.isCancelled,generation==connectionGeneration else{return}
+                        connected=true
                         let data:Data
                         switch message {case .data(let d):data=d;case .string(let s):data=Data(s.utf8);@unknown default:continue}
                         guard let obj=try JSONSerialization.jsonObject(with:data) as? [String:Any] else{continue}
                         let next=obj["cursor"] as? Int ?? cursor
                         if next<cursor {continue};cursor=next
                         let type=obj["type"] as? String ?? ""
+                        if type=="device.connection" {
+                            if let raw=obj["device"],let data=try? JSONSerialization.data(withJSONObject:raw),let status=try? JSONDecoder().decode(DeviceStatus.self,from:data) {device=status}
+                            device.online=obj["online"] as? Bool ?? false
+                            continue
+                        }
+                        if type=="status" {
+                            device.online=true
+                            if let rssi=obj["rssi"] as? Int {device.rssi=rssi}
+                            if let board=obj["board"] as? String {device.board=board}
+                            if let battery=obj["battery"] as? [String:Any] {device.battery = .init(pct:battery["pct"] as? Int,charging:battery["charging"] as? Bool)}
+                            continue
+                        }
                         if type=="session.active" || type=="session.deleted" {let previous=active;try await refresh(preserveCurrentTurn:true);if active != previous {state="idle"};continue}
                         if let sid=obj["session_id"] as? String,sid != active {continue}
                         if type=="transcript.partial" {liveTranscript=preferences.live_transcription == true ? (obj["text"] as? String ?? ""):""}
@@ -186,17 +206,15 @@ enum SecureStore {
                         if type=="pips.updated" {try await refresh();continue}
                         if type=="pip.selected" {let id=obj["pip_id"] as? String ?? ["pip","nori","orbit"][min(2,max(0,obj["pip"] as? Int ?? 0))];if let p=pips.first(where:{$0.id==id}){choose(p);await loadArt(p)}}
                         if type=="heard",let index=sessions.firstIndex(where:{$0.id==active && $0.title=="שיחה חדשה"}) {sessions[index].title=String((obj["text"] as? String ?? "שיחה חדשה").prefix(60))}
-                        if type=="device.connection" {device.online=obj["online"] as? Bool ?? false;if device.online {try? await refresh()}}
-                        if type=="status" {device.online=true;device.rssi=obj["rssi"] as? Int; if let board=obj["board"] as? String {device.board=board}}
-                        if type=="status",let battery=obj["battery"] as? [String:Any] { device.battery = .init(pct:battery["pct"] as? Int,charging:battery["charging"] as? Bool) }
                     }
-                } catch {if !Task.isCancelled {self.error="החיבור נותק. מנסה להתחבר מחדש…"}}
+                } catch {if !Task.isCancelled && generation==connectionGeneration {self.error="החיבור לשרת נותק. מנסה להתחבר מחדש…"}}
+                guard !Task.isCancelled,generation==connectionGeneration else{return}
                 connected=false;socket?.cancel(with:.goingAway,reason:nil)
                 try? await Task.sleep(for:.seconds(delay));delay=min(20,delay*2)
             }
         }
     }
-    func stop(){loop?.cancel();loop=nil;socket?.cancel(with:.goingAway,reason:nil);socket=nil;connected=false}
+    func stop(){connectionGeneration+=1;loop?.cancel();loop=nil;socket?.cancel(with:.goingAway,reason:nil);socket=nil;connected=false;device.online=false}
     func send(_ text:String) async -> Bool {
         do {try await call("/v1/sessions/\(active)/messages",body:["text":text,"idempotency_key":UUID().uuidString]);state="thinking";error="";return true}
         catch {self.error=error.localizedDescription;return false}

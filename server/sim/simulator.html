@@ -37,6 +37,7 @@
 <main>
   <section class="stage">
     <div class="device"><canvas id="c" width="466" height="466"></canvas><div class="sub" id="sub"></div></div>
+    <div class="row"><label>תצוגת מסך <select id="screenShape"><option value="round">1.75C עגול</option><option value="rect">1.8 מלבני</option><option value="square">2.16 מרובע</option></select></label></div>
     <div class="row" id="pips"></div>
     <div class="row" id="emos"></div>
     <div class="row" id="gests"></div>
@@ -50,10 +51,19 @@
   </aside>
 </main>
 <script src="/sim/face.js"></script>
-<script>
+<script type="module">
+import {screenEdge} from '/sim/screen-edge.js';
 "use strict";
 const token = new URLSearchParams(location.search).get("token") || "";
 const cv = document.getElementById("c"), ctx = cv.getContext("2d"), img = ctx.createImageData(466, 466);
+const sceneCanvas=document.createElement('canvas');sceneCanvas.width=466;sceneCanvas.height=466;
+const sceneContext=sceneCanvas.getContext('2d');
+let screenShape='round';
+document.getElementById('screenShape').onchange=e=>{
+  screenShape=e.target.value;cv.width=screenShape==='rect'?368:466;cv.height=screenShape==='rect'?448:466;
+  cv.style.borderRadius=screenShape==='round'?'50%':'12%';cv.parentElement.style.borderRadius=cv.style.borderRadius;
+  cv.parentElement.style.aspectRatio=`${cv.width}/${cv.height}`;
+};
 let face, ring = "none", ringT0 = 0, level = 0, subTimer;
 const sub = document.getElementById("sub"), log = document.getElementById("log"), st = document.getElementById("st");
 
@@ -76,7 +86,8 @@ fetch("/sim/emotions.json").then(r => r.json()).then(async data => {
     face.update((now - last) / 1000); last = now;
     face.talk = level;
     face.render(img, 233, 233);
-    ctx.putImageData(img, 0, 0);
+    sceneContext.putImageData(img,0,0);ctx.fillStyle='#000';ctx.fillRect(0,0,cv.width,cv.height);
+    const size=Math.min(cv.width,cv.height);ctx.drawImage(sceneCanvas,(cv.width-size)/2,(cv.height-size)/2,size,size);
     drawRing(now);
     requestAnimationFrame(loop);
   };
@@ -86,19 +97,10 @@ fetch("/sim/emotions.json").then(r => r.json()).then(async data => {
 function drawRing(now) {
   if (ring === "none") return;
   const t = (now - ringT0) / 1000;
-  ctx.save(); ctx.lineCap = "round"; ctx.lineWidth = 9;
-  ctx.strokeStyle = "rgba(98,242,223,.15)"; ctx.beginPath(); ctx.arc(233, 233, 225, 0, 7); ctx.stroke();
-  if (ring === "rec") {
-    const p = Math.min(t / 30, 1);
-    ctx.strokeStyle = "#62f2df"; ctx.shadowColor = "#62f2df"; ctx.shadowBlur = 10 + micLevel * 30;
-    ctx.beginPath(); ctx.arc(233, 233, 225, -Math.PI / 2, -Math.PI / 2 + p * Math.PI * 2); ctx.stroke();
-  } else if (ring === "think") {
-    const a = t * 4;
-    const g = ctx.createConicGradient(a, 233, 233);
-    g.addColorStop(0, "rgba(127,196,255,0)"); g.addColorStop(0.25, "rgba(127,196,255,1)"); g.addColorStop(0.2501, "rgba(127,196,255,0)");
-    ctx.strokeStyle = g; ctx.beginPath(); ctx.arc(233, 233, 225, 0, 7); ctx.stroke();
-  }
-  ctx.restore();
+  screenEdge(ctx,screenShape,cv.width,cv.height,0,1,'rgba(98,242,223,.15)',9);
+  if(ring==='rec')screenEdge(ctx,screenShape,cv.width,cv.height,0,Math.min(t/30,1),'#62f2df',9);
+  else if(ring==='think')screenEdge(ctx,screenShape,cv.width,cv.height,t*4/(Math.PI*2),.25,'#7fc4ff',9);
+
 }
 
 // ---- connection

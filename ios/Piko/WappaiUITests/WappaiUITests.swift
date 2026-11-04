@@ -32,6 +32,13 @@ final class WappaiUITests:XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for:[enabled],timeout:5),.completed,show.debugDescription)
         app.buttons["סיום"].tap();XCTAssertTrue(pip.waitForExistence(timeout:5),app.debugDescription)
     }
+    func testOfflineDeviceNoticeKeepsTextChatAvailable() {
+        app.terminate();app.launchArguments=["--qa-ui-fixture","--qa-ui-reset","--qa-device-offline"];app.launch()
+        XCTAssertTrue(app.otherElements["deviceOfflineNotice"].exists || app.staticTexts["deviceOfflineNotice"].waitForExistence(timeout:8))
+        let composer=app.textFields["messageComposer"]
+        XCTAssertTrue(composer.exists);composer.tap();composer.typeText("Hello")
+        XCTAssertTrue(app.buttons["שלח הודעה"].isEnabled)
+    }
     func testTapGalleryAndProtectedBuiltins() {
         pip.tap();XCTAssertTrue(app.navigationBars["Pips"].waitForExistence(timeout:5))
         app.buttons["pipOptions-pip"].tap()

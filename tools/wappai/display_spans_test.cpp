@@ -24,5 +24,17 @@ int main(){
    if(required)assert(sent[row*466+col]);
   }
  }
- puts("Sparse display: 80 dirty regions, full annulus coverage, alignment, merging and bounds passed");
+ for(auto wh:{std::pair<int,int>{368,448},{480,480}}){
+  int W=wh.first,H=wh.second;std::vector<bool> sent(W*H);
+  for(int y=0;y<H;y+=12){int h=std::min(12,H-y);auto spans=displaySpans(0,2,0,2,y,h,true,W,H,false);
+   for(int i=0;i<spans.count;i++){auto s=spans.spans[i];assert(s.left>=0 && s.right<=W && !(s.left&1) && !(s.right&1));
+    for(int yy=y;yy<y+h;yy++)for(int x=s.left;x<s.right;x++)sent[yy*W+x]=true;
+   }
+  }
+  int inset=(int)(std::min(W,H)*.035f);
+  for(int x=inset;x<W-inset;x++){assert(sent[inset*W+x]);assert(sent[(H-inset-1)*W+x]);}
+  for(int y=inset;y<H-inset;y++){assert(sent[y*W+inset]);assert(sent[y*W+W-inset-1]);}
+  assert(!sent[(H/2)*W+W/2]);
+ }
+ puts("Round and rectangular display transfers: edge coverage, alignment, merging and bounds passed");
 }

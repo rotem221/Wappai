@@ -281,11 +281,14 @@ function event(e) {
     case "session.active":
     case "pips.updated":
     case "pip.selected":
-    case "device.connection":
       refresh().catch(() => {});
       break;
+    case "device.connection":
+      state.device={...state.device,...(e.device || {}),online:e.online===true};
+      render();
+      break;
     case "status":
-      state.device = { ...state.device, ...e };
+      state.device = { ...state.device, ...e, online:true };
       render();
       break;
   }
@@ -306,6 +309,8 @@ function connect() {
   };
   ws.onclose = () => {
     if (socket !== ws) return;
+    state.device.online=false;
+    $("#connection").classList.remove("online");
     $("#connection span").textContent = "החיבור לשרת נותק — מתחבר מחדש…";
     reconnect = setTimeout(async () => {
       try {
@@ -963,6 +968,8 @@ async function stopMic() {
 }
 async function startMic() {
   if (held) return;
+  if(socket?.readyState!==WebSocket.OPEN){notice("אין חיבור לשרת. הדיבור אינו זמין כרגע.");return;}
+  if(!state.device.online)notice("המכשיר מנותק. השיחה תתבצע במיקרופון וברמקול הדפדפן בלבד.");
   clearPlayback();
   held = true;
   const generation = ++micGeneration;

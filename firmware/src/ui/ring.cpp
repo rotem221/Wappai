@@ -25,6 +25,54 @@ static inline uint16_t pack(float r, float g, float b, bool swap) {
     return swap ? (uint16_t)((v >> 8) | (v << 8)) : v;
 }
 
+namespace {
+struct EdgePixel {uint32_t offset;uint16_t phase,distance;};
+static EdgePixel *edgePixels=nullptr;
+static int edgeW=0,edgeH=0;
+static size_t edgeCount=0;
+// Rounded rectangle parameterized by distance, starting at the top midpoint.
+// Constant speed through corners; geometry is cached, never recomputed per frame.
+static void edgeGeometry(float x,float y,int W,int H,float &distance,float &phase) {
+    float inset=fminf(W,H)*.035f,r=fminf(W,H)*.12f;
+    float hx=W*.5f-inset,hy=H*.5f-inset;
+    r=fminf(r,fminf(hx,hy));
+    float dx=fabsf(x-W*.5f),dy=fabsf(y-H*.5f),qx=dx-(hx-r),qy=dy-(hy-r);
+    distance=fabsf(hypotf(fmaxf(qx,0),fmaxf(qy,0))+fminf(fmaxf(qx,qy),0)-r);
+    float A=hx-r,B=hy-r,Q=A+B+1.570796327f*r,u;
+    if(qx>0 && qy>0)u=A+r*atan2f(qx,qy);
+    else if(qx>qy)u=Q-dy;
+    else u=dx;
+    float s=y<H*.5f ? (x>=W*.5f ? u:4*Q-u):(x>=W*.5f ? 2*Q-u:2*Q+u);
+    phase=s/(4*Q);
+}
+static void drawRectangle(uint16_t *px,int W,int H,bool swapped,const RingStyle &st) {
+    if(edgeW!=W || edgeH!=H) {
+        free(edgePixels);edgePixels=nullptr;edgeCount=0;edgeW=W;edgeH=H;
+        for(int y=0;y<H;y++)for(int x=0;x<W;x++){float d,p;edgeGeometry(x+.5f,y+.5f,W,H,d,p);if(d<=20)edgeCount++;}
+#ifdef ARDUINO
+        edgePixels=(EdgePixel*)heap_caps_malloc(edgeCount*sizeof(EdgePixel),MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
+#else
+        edgePixels=(EdgePixel*)malloc(edgeCount*sizeof(EdgePixel));
+#endif
+        if(edgePixels){size_t n=0;for(int y=0;y<H;y++)for(int x=0;x<W;x++){
+            float d,p;edgeGeometry(x+.5f,y+.5f,W,H,d,p);if(d<=20)edgePixels[n++]={(uint32_t)(y*W+x),(uint16_t)(p*65535),(uint16_t)(d*256+.5f)};
+        }}
+    }
+    float head=fmodf(st.head/6.2831853f,1);if(head<0)head+=1;
+    uint16_t colors[256];for(int i=0;i<256;i++)colors[i]=pack(st.r*i/255.f,st.g*i/255.f,st.b*i/255.f,swapped);
+    auto paint=[&](uint32_t offset,float phase,float distance){
+        float arc=1,half=st.thickness*.5f;
+        if(st.mode==RS_PROGRESS)arc=st.progress>0 && phase<=clampf(st.progress,0,1) ? 1:0;
+        if(st.mode==RS_COMET){float delta=head-phase;if(delta<0)delta+=1;arc=clampf(1-delta/(2.2f/6.2831853f),0,1);arc*=arc;}
+        float band=clampf(half+.5f-distance,0,1),glow=clampf(st.glow,0,1)*clampf(1-(distance-half)/7,0,1)*.35f*arc;
+        float alpha=st.mode==RS_OFF ? 0:fmaxf(band*fmaxf(arc,st.track)*st.alpha,glow);
+        px[offset]=colors[(int)(clampf(alpha,0,1)*255+.5f)];
+    };
+    if(edgePixels){for(size_t i=0;i<edgeCount;i++){auto &p=edgePixels[i];paint(p.offset,p.phase/65535.f,p.distance/256.f);}}
+    else for(int y=0;y<H;y++)for(int x=0;x<W;x++){float d,p;edgeGeometry(x+.5f,y+.5f,W,H,d,p);if(d<=20)paint(y*W+x,p,d);}
+}
+}
+
 // Paints every pixel of the band [R0, R1] (so it also erases the previous frame).
 static void ringDrawFallback(uint16_t *px, int W, int H, bool swapped, const RingStyle &st) {
     const float cx = W * 0.5f, cy = H * 0.5f;
@@ -132,6 +180,9 @@ __attribute__((optimize("O3")))
 #endif
 void ringDraw(uint16_t *px,int W,int H,bool swapped,const RingStyle &st,bool allowIncremental) {
     if(!px || W<=0 || H<=0)return;
+    if(st.contour==RC_ROUNDED_RECT || (st.contour==RC_AUTO && (W!=466 || H!=466))) {
+        paintedValid=false;drawRectangle(px,W,H,swapped,st);return;
+    }
     if(!prepare(W,H)){paintedValid=false;ringDrawFallback(px,W,H,swapped,st);return;}
 
     const float tau=6.2831853f,half=st.thickness*.5f,end=clampf(st.progress,0,1)*tau;

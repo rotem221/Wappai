@@ -99,6 +99,7 @@ async def emit(body):
 async def observe(obj):
     if not obj: return
     t=obj.get('type'); body={**obj,'session_id':active}
+    if t=='status': body={**obj}  # Hardware telemetry belongs to every conversation.
     if t=='pip.selected' and studio:
         pid=obj.get('pip_id') or {0:'pip',1:'nori',2:'orbit'}.get(obj.get('pip'))
         if pid and store.rows('SELECT id FROM pips WHERE id=?',(pid,)):studio.select(pid);body['pip_id']=pid
@@ -325,9 +326,17 @@ def register(app,context):
                 batch=store.events(after)
                 for e in batch: await ws.send_json(e); after=e['cursor']
                 if len(batch)<500: break
+            def connection():
+                return {'type':'device.connection','online':any(c.kind=='board' for c in ctx.hub.conns),
+                        'device':{**ctx.hub.device,'online':any(c.kind=='board' for c in ctx.hub.conns)}}
+            # Reconcile actual hardware after replay, including a quiet/sleeping
+            # device and reconnects with no new persisted telemetry.
+            await ws.send_json(connection())
             while q in clients:
                 try: e=await asyncio.wait_for(q.get(),20)
-                except asyncio.TimeoutError: await ws.send_json({'type':'heartbeat','cursor':after}); continue
+                except asyncio.TimeoutError:
+                    await ws.send_json({'type':'heartbeat','cursor':after})
+                    await ws.send_json(connection()); continue
                 if 'cursor' not in e: await ws.send_json(e)
                 elif e['cursor']>after: await ws.send_json(e); after=e['cursor']
         except (WebSocketDisconnect,RuntimeError,ValueError): pass
