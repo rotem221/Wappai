@@ -696,15 +696,18 @@ static void fetchPip() {
 
 static void netTask(void *) {
     connectWifi();
-    roamCheck(true);
+    // Boot already selected the strongest saved network. Let association and
+    // the Hub handshake settle before any further off-channel roaming scan.
     hdr = "Authorization: Bearer " + token;
     bool lanFirst = urlLan.length() && prefs.getString("lan_ssid", "") == WiFi.SSID();
     startWs(lanFirst ? 1 : 0);
     static uint8_t buf[2048];
     for (;;) {
         if (shutdownReq) { ws.disconnect(); WiFi.disconnect(true); WiFi.mode(WIFI_OFF); vTaskDelay(portMAX_DELAY); }
-        modelLock(); model.wifi = WiFi.status() == WL_CONNECTED; modelUnlock();
-        ws.loop();
+        bool wifiUp=WiFi.status() == WL_CONNECTED;
+        modelLock(); model.wifi = wifiUp; modelUnlock();
+        if(wifiUp)ws.loop();
+        else if(model.server){ws.disconnect();modelLock();model.server=false;modelUnlock();}
         bool up = model.server;
         if (up) {
             retryTimerEvent();
@@ -717,7 +720,7 @@ static void netTask(void *) {
         if (restartReq) { delay(500); ESP.restart(); }
         if (model.scanReq && !model.scanBusy) scanToModel();
         if (!otaUrl.isEmpty()) doOta();
-        if (!micActive && !micStopPending && !audioPlaying()) roamCheck();
+        if (up && !micActive && !micStopPending && !audioPlaying()) roamCheck();
         if(assetRequest.length())fetchPip();
         if (model.imgReq) fetchImage();
         // meeting offline: keep the audio in the mic ring (PSRAM) until the server is back

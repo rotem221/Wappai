@@ -11,7 +11,8 @@ final class WappaiBluetooth:NSObject,ObservableObject,CBCentralManagerDelegate,C
     @Published var paired=false
     @Published private(set) var rememberedDevice=UserDefaults.standard.string(forKey:"wappai.ble.device")
     var hasRememberedDevice:Bool {rememberedDevice != nil}
-    private var setupRequested=false
+    @Published private(set) var setupRequested=false
+    @Published private(set) var setupComplete=false
     private var foreground=true
     private var reconnect:DispatchWorkItem?
     @Published var networks:[Network]=[]
@@ -22,6 +23,7 @@ final class WappaiBluetooth:NSObject,ObservableObject,CBCentralManagerDelegate,C
     private var joiningSSID=""
     private var joinDeadline=Date.distantPast
     private var statusTimer:Timer?
+    private var scanID=UUID()
     struct Network:Identifiable {var id:String{ssid};let ssid:String;let rssi:Int;let open:Bool}
     private var central:CBCentralManager!
     private var device:CBPeripheral?
@@ -31,6 +33,14 @@ final class WappaiBluetooth:NSObject,ObservableObject,CBCentralManagerDelegate,C
     func centralManagerDidUpdateState(_ central:CBCentralManager){if central.state == .poweredOn {scan()}else{status="יש להפעיל Bluetooth ולאפשר גישה בהגדרות"}}
     func scan(){foreground=true;guard central.state == .poweredOn else{return}
         if let id=rememberedDevice.flatMap(UUID.init(uuidString:)),let known=central.retrievePeripherals(withIdentifiers:[id]).first {
+            if known.state == .connected {
+                device=known;known.delegate=self
+                if rx == nil || tx == nil {known.discoverServices([Self.service])}
+                else if let tx,!tx.isNotifying {known.setNotifyValue(true,for:tx)}
+                else if !paired,let tx {known.readValue(for:tx)}
+                else if setupRequested && !scanning {scanNetworks()}
+                return
+            }
             if known.state == .disconnected {connect(known,automatic:true)}
             if known.state == .connected || known.state == .connecting {return}
         }
@@ -45,10 +55,12 @@ final class WappaiBluetooth:NSObject,ObservableObject,CBCentralManagerDelegate,C
     }
     func connect(_ p:CBPeripheral,automatic:Bool=false){
         guard p.state != .connecting else{return}
-        setupRequested = !automatic || joining;device=p;p.delegate=self
+        // An automatic transport reconnect must preserve the user's explicit
+        // request to open Wi-Fi settings and scan after authentication.
+        setupRequested = setupRequested || !automatic || joining;device=p;p.delegate=self
         status="מתחבר למכשיר…";central.connect(p);central.stopScan()
     }
-    func beginSetup(){setupRequested=true;wifiConnected=false;if paired{scanNetworks()}else{scan()}}
+    func beginSetup(){setupRequested=true;setupComplete=false;if paired{scanNetworks()}else{scan()}}
     private func scheduleReconnect(){
         reconnect?.cancel();guard foreground else{return}
         let work=DispatchWorkItem{[weak self] in self?.scan()};reconnect=work
@@ -56,11 +68,17 @@ final class WappaiBluetooth:NSObject,ObservableObject,CBCentralManagerDelegate,C
     }
     func centralManager(_ central:CBCentralManager,didConnect peripheral:CBPeripheral){peripheral.discoverServices([Self.service])}
     func centralManager(_ central:CBCentralManager,didFailToConnect peripheral:CBPeripheral,error:Error?){status=error?.localizedDescription ?? "לא ניתן להתחבר";scheduleReconnect()}
-    func centralManager(_ central:CBCentralManager,didDisconnectPeripheral peripheral:CBPeripheral,error:Error?){paired=false;wifiConnected=false;rx=nil;tx=nil;status=joining ? "בודק את החיבור לרשת…":"המכשיר התנתק. אפשר להתחבר שוב.";nearby.removeAll();scheduleReconnect()}
+    func centralManager(_ central:CBCentralManager,didDisconnectPeripheral peripheral:CBPeripheral,error:Error?){paired=false;wifiConnected=false;scanning=false;scanID=UUID();rx=nil;tx=nil;status=joining ? "בודק את החיבור לרשת…":"המכשיר התנתק. אפשר להתחבר שוב.";nearby.removeAll();scheduleReconnect()}
     func peripheral(_ peripheral:CBPeripheral,didDiscoverServices error:Error?){for s in peripheral.services ?? [] {peripheral.discoverCharacteristics([rxID,txID],for:s)}}
     func peripheral(_ peripheral:CBPeripheral,didDiscoverCharacteristicsFor service:CBService,error:Error?){
         for c in service.characteristics ?? [] {if c.uuid==rxID{rx=c};if c.uuid==txID{tx=c;peripheral.setNotifyValue(true,for:c)}}
-        if let tx {status="מתחבר באופן מוצפן. ייתכן שיופיע אישור Bluetooth של iOS.";peripheral.readValue(for:tx)}
+        if tx != nil {status="מתחבר באופן מוצפן. ייתכן שיופיע אישור Bluetooth של iOS."}
+    }
+    func peripheral(_ peripheral:CBPeripheral,didUpdateNotificationStateFor characteristic:CBCharacteristic,error:Error?){
+        if let error {status=error.localizedDescription;return}
+        // Claim/scan responses are notifications. Subscribe before sending any
+        // commands so the first pairing response cannot be lost.
+        if characteristic.uuid==txID && characteristic.isNotifying {peripheral.readValue(for:characteristic)}
     }
     private func ownerKey()->String {
         let key="ble.owner."+(device?.identifier.uuidString ?? "")
@@ -91,7 +109,9 @@ final class WappaiBluetooth:NSObject,ObservableObject,CBCentralManagerDelegate,C
         case "connecting":status="מתחבר לרשת ובודק שהחיבור הצליח…"
         case "wifi_status":
             if PairingPolicy.acceptsWiFi(connected:d["connected"] as? Bool == true,ssid:d["ssid"] as? String,joining:joining,requestedSSID:joiningSSID) {
+                let finishedJoin=joining
                 joining=false;wifiConnected=true;status="מחובר ל־\(d["ssid"] as? String ?? joiningSSID)";statusTimer?.invalidate()
+                if finishedJoin {setupRequested=false;setupComplete=true}
             } else if d["failed"] as? Bool == true {
                 joining=false;wifiConnected=false;status=(d["error"] as? String).flatMap{$0.isEmpty ? nil:$0} ?? "החיבור לרשת נכשל. נסה שוב.";statusTimer?.invalidate()
             }
@@ -99,8 +119,12 @@ final class WappaiBluetooth:NSObject,ObservableObject,CBCentralManagerDelegate,C
         default:break
         }
     }
-    func scanNetworks(){networks=[];scanning=true;write(["op":"scan"])
-        DispatchQueue.main.asyncAfter(deadline:.now()+25){[weak self] in guard let self,self.scanning else{return};self.scanning=false;self.status="הסריקה לא הושלמה. נסה לסרוק שוב."}
+    func scanNetworks(){
+        setupRequested=true;setupComplete=false
+        guard paired,tx?.isNotifying==true else{scan();return}
+        guard !scanning else{return}
+        networks=[];scanning=true;scanID=UUID();let request=scanID;status="מחפש רשתות בקרבת המכשיר…";write(["op":"scan"])
+        DispatchQueue.main.asyncAfter(deadline:.now()+35){[weak self] in guard let self,self.scanning,self.scanID==request else{return};self.scanning=false;self.status="הסריקה לא הושלמה. נסה לסרוק שוב."}
     }
     func join(ssid:String,password:String){
         joining=true;wifiConnected=false;joiningSSID=ssid;joinDeadline=Date().addingTimeInterval(70)

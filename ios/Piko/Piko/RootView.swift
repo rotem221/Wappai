@@ -95,8 +95,8 @@ struct RootView:View {
                 guard !Task.isCancelled else{return}
                 if PairingPolicy.offerDiscovery(nearby:bluetooth.nearby.count,dismissed:dismissedDiscovery,remembered:bluetooth.hasRememberedDevice,authenticated:bluetooth.paired,online:client.device.online,foreground:phase == .active){showPairing=true}
             }
-            .onChange(of:bluetooth.wifiConnected){_,connected in if connected {showPairing=false}}
-            .onChange(of:client.device.online){_,online in if online && !bluetooth.joining {showPairing=false}}
+            .onChange(of:bluetooth.setupComplete){_,complete in if complete {showPairing=false}}
+            .onChange(of:client.device.online){_,online in if online && !bluetooth.joining && !bluetooth.setupRequested {showPairing=false}}
             .onChange(of:phase){_,value in if value == .active {client.start();bluetooth.scan();Task{if client.device.online{await firmwareUpdates.check(board:client.device.board,version:client.device.fw_version,fixture:client.uiTesting)}}}else{client.stop();bluetooth.stopScan()}}
             .task {
                 let args=ProcessInfo.processInfo.arguments
@@ -213,7 +213,7 @@ struct PairingView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if bluetooth.joining || bluetooth.wifiConnected {
+                if bluetooth.joining || bluetooth.setupComplete {
                     VStack(spacing:16){
                         WappaiDevice3D(hardware:bluetooth.hardware).frame(height:205)
                         if bluetooth.wifiConnected {Image(systemName:"checkmark.circle.fill").font(.largeTitle).foregroundStyle(.green)} else {ProgressView()}
@@ -223,6 +223,7 @@ struct PairingView: View {
                     }.padding(24)
                 } else if bluetooth.paired {
                     List {
+                        Section {Label("מחובר למכשיר ב־Bluetooth",systemImage:"checkmark.circle.fill").foregroundStyle(.green).font(.subheadline)}
                         Section {
                             ForEach(bluetooth.networks) { network in
                                 Button { if network.open {bluetooth.join(ssid:network.ssid,password:"")} else {selected=network} } label: {

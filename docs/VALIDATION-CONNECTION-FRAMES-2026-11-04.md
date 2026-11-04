@@ -8,6 +8,8 @@
 - Rectangular displays use an inset rounded rectangle for the animated perimeter. Geometry is cached, motion follows perimeter distance, and dirty transfers cover straight edges and corners. The circular 466px panel retains its existing rendering path.
 - The landing page's 1.8 and 2.16 previews and the device simulator use matching display outlines, including listening, thinking and timer states.
 - Wi-Fi scans are serialized through the network task. Reconnection is paused before scanning, weak-network scans have longer dwell and a passive fallback, and radio sleep/autoreconnect settings are restored afterward.
+- iOS Wi-Fi setup now preserves an explicit scan request across automatic BLE reconnects, subscribes to notifications before claiming ownership, resumes service discovery on an already connected peripheral, and scopes scan timeouts to their request. A saved Wi-Fi connection no longer dismisses the manually opened network picker; a successful new join still closes it. The picker labels authenticated Bluetooth connectivity explicitly.
+- Startup avoids a redundant roaming scan before the Hub handshake, and the network task avoids DNS/TLS connection attempts while Wi-Fi is down.
 - BLE diagnostic shutdown disconnects peers before destroying the server, avoiding a disconnect callback accessing freed server state. Optional staged radio diagnostics help isolate RF reception before/after peripheral startup.
 
 ## Validation performed
@@ -22,9 +24,9 @@
 
 ## Physical connectivity limitation
 
-USB detection and flashing are verified. After the firmware update the physical device did not maintain a Wi-Fi/Hub connection. The nearby network is available in 2.4GHz, channel 11, WPA2-Personal, and its name matches the stored network. The Mac measured roughly -60 to -67 dBm; an isolated ESP32 scan intermittently detected channel-11 networks at roughly -85 to -88 dBm, while other scans returned no networks. Active/passive scans, awake radio, and BLE shutdown did not establish a reliable connection. This is not evidence of a 5GHz-only network or an incorrect password; the remaining reception problem is unresolved.
+USB detection and flashing are verified. After the firmware update the physical device did not maintain a Wi-Fi/Hub connection. The nearby network is available in 2.4GHz, channel 11, WPA2-Personal, and its name matches the stored network. The Mac measured roughly -60 to -67 dBm; an isolated ESP32 scan intermittently detected channel-11 networks at roughly -85 to -88 dBm, while other scans returned no networks. Active/passive scans, awake radio, and BLE shutdown did not establish a reliable connection. After radio recalibration the board found the saved network, authenticated, and obtained an IP address at about -86 dBm. The final firmware also reached the Hub once, but that connection lasted only about 60 seconds. A later authenticated snapshot/event check correctly reported offline. The user confirmed that the awake device now lists Wi-Fi networks, while the iPhone did not; the iOS reconnect/notification sequencing fixes above address that separate failure. Reliable ongoing Hub connectivity remains unresolved; a 5GHz-only network or incorrect stored password does not explain the successful association.
 
-The UI must therefore report the device offline. A successful physical reconnect and online/offline/online round trip remain pending. Only the 1.75C hardware has been flashed here; rectangular rendering tests do not qualify the 1.8 or 2.16 hardware BSPs for release.
+The UI must report the current physical connection state rather than treat BLE pairing as a working Hub connection. A successful physical reconnect and online/offline/online round trip remain pending. Only the 1.75C hardware has been flashed here; rectangular rendering tests do not qualify the 1.8 or 2.16 hardware BSPs for release.
 
 ## Recovery
 
