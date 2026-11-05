@@ -69,3 +69,81 @@ body{font-size:18px;line-height:1.55}
 .intro-simple h1.handwritten{font-size:clamp(50px,4.3vw,76px)}.direct-actions{gap:13px;align-items:stretch;flex-wrap:wrap}.direct-actions .start-button{gap:12px;padding:13px 23px;font-size:18px}.app-store-action{display:inline-flex;align-items:center;justify-content:center;gap:11px;min-height:56px;padding:10px 22px;border:1px solid #cadbcd;border-radius:30px;font-family:Manrope,sans-serif;font-size:17px;font-weight:650;background:#ffffff8c}.app-store-action small{display:block;text-align:center;font-family:Assistant,sans-serif;font-size:13px;font-weight:500}.app-store-action .icon{width:21px;height:21px}.coming-soon{color:#52695a}.hardware-link{display:inline-block;margin-top:17px;font-size:17px;color:#416b55;padding:7px 0;text-decoration:underline;text-underline-offset:5px}.hardware-disclaimer{font-size:18px;line-height:1.8;margin:0 0 21px}.hardware-cards{display:grid;gap:13px}.hardware-card{padding:18px 20px;background:#edf3ed;border:1px solid #d7e4d9;border-radius:19px}.hardware-card-title{display:flex;align-items:center;gap:13px;flex-wrap:wrap}.hardware-card-title h3{font-family:Manrope,sans-serif;font-size:18px;margin:0}.hardware-card-title strong{margin-inline-start:auto;font-family:Manrope,sans-serif;font-size:17px}.hardware-card p{margin:9px 0;font-size:16px;color:#456451}.hardware-card .hardware-status{font-weight:650;color:#2d6148}.hardware-card a{display:inline-flex;align-items:center;gap:7px;font-size:17px;text-decoration:underline;text-underline-offset:4px}.hardware-pricing{margin-top:20px;font-size:16px}.board-selector{display:grid;gap:8px;font-size:17px;font-weight:600;margin-bottom:13px}.board-selector select{font:inherit;padding:11px 13px;border:1px solid #a9c5b4;border-radius:12px;background:#fff;color:var(--ink);width:100%}.board-selector select:focus-visible{outline:3px solid #248564;outline-offset:3px}.check-releases{border:1px solid #adc6b5;border-radius:24px;padding:10px 17px;font-size:16px;margin:9px 0}.flash-steps{margin-top:20px}
 @media(max-width:760px){.brand span{font-size:41px}.intro-simple h1.handwritten{font-size:clamp(43px,10vw,61px)}.direct-actions{justify-content:center;gap:10px}.direct-actions .start-button{font-size:16px;padding:12px 17px;gap:7px}.app-store-action{font-size:15px;padding:9px 17px;min-height:51px}.hardware-link{font-size:16px}.hardware-card{padding:15px}.hardware-card-title{gap:9px}.hardware-card-title h3{font-size:16px}.hardware-card-title strong{font-size:15px}.footer-brand span{font-size:29px}}
 @media(max-width:370px){.brand span{font-size:36px}.direct-actions .start-button{font-size:15px;padding:11px 14px}.app-store-action{font-size:14px;padding:8px 13px;gap:7px}.app-store-action .icon{width:17px;height:17px}}
+/* Canonical pixel wordmark: the W symbol is the first letter, not a second badge. */
+.brand img.brand-wordmark{width:280px;height:auto;object-fit:contain;image-rendering:pixelated}
+.footer-brand img.brand-wordmark{width:180px;height:auto;object-fit:contain;image-rendering:pixelated}
+@media(max-width:760px){.brand img.brand-wordmark{width:210px}.nav{height:95px}}
+@media(max-width:410px){.brand img.brand-wordmark{width:172px}.nav nav{gap:12px}}
+
+/* Compact product story and a genuinely centered mobile brand. */
+.landing-page .intro-simple .lead{max-width:465px;font-size:21px;line-height:1.7}
+.landing-page .studio-caption{justify-content:center;font-family:Assistant,sans-serif;font-size:15px;letter-spacing:0;text-transform:none;pointer-events:none}
+.landing-page .glimpse-heading{margin-bottom:18px}
+.landing-page .shot-copy span{font-size:17px;line-height:1.6}
+.landing-page .shot-copy strong{font-size:23px}
+.landing-page .hardware-link{font-size:16px;margin-top:12px}
+.landing-page #screen-state{min-height:24px}
+.landing-page #model-status{min-height:20px}
+@media(max-width:760px){
+ .landing-page .page{padding-inline:20px}
+ .landing-page .nav{height:88px;position:relative;display:grid;grid-template-columns:1fr auto 1fr}
+ .landing-page .nav .brand{grid-column:2;justify-self:center}
+ .landing-page .nav .brand-wordmark{width:190px;height:auto}
+ .landing-page .nav nav{position:absolute;left:0;top:22px;gap:0}
+ .landing-page .nav nav>a{font-size:0;gap:0;width:44px;height:44px;justify-content:center;border-radius:50%}
+ .landing-page .nav nav>a .icon{width:23px;height:23px}
+ .landing-page .hero{padding-top:22px;gap:22px;padding-bottom:24px}
+ .landing-page .intro-simple h1.handwritten{font-size:clamp(42px,11vw,54px);line-height:1.22;margin:0 0 12px}
+ .landing-page .intro-simple .lead{max-width:350px;font-size:18px;line-height:1.65;margin:0 auto}
+ .landing-page .direct-actions{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:10px;width:100%;max-width:390px;margin:20px auto 0}
+ .landing-page .direct-actions .start-button{min-width:0;font-size:16px;gap:7px;padding:12px 10px;min-height:56px;justify-content:center}
+ .landing-page .app-store-action{width:100%;height:100%;font-size:15px;min-height:56px;padding:8px 10px;gap:8px}
+ .landing-page .hardware-link{font-size:16px;margin-top:8px;min-height:40px;padding:8px 0}
+ .landing-page .showroom{height:394px;border-radius:25px;margin-top:0}
+ .landing-page #scene{height:257px;margin-top:26px;touch-action:pan-y}
+ .landing-page .studio-caption{top:13px;font-size:13px}
+ .landing-page .studio-caption span:last-child{font-size:13px}
+ .landing-page .models{display:flex;width:max-content;max-width:calc(100% - 24px);margin:0 auto 8px}
+ .landing-page .models button{font-size:13px;min-width:78px;min-height:36px;padding:7px 12px}
+ .landing-page #screen-state{font-size:15px;line-height:1.4;margin:8px 12px 3px}
+ .landing-page #model-status{font-size:12px;line-height:1.5;margin:0 12px;padding:0}
+ .landing-page .glimpse{padding:20px 0}
+ .landing-page .glimpse h2{font-size:25px}
+ .landing-page .shots{gap:14px;padding:0 0 10px;scrollbar-width:none;overscroll-behavior-x:contain}
+ .landing-page .shots::-webkit-scrollbar{display:none}
+ .landing-page .shot{flex:0 0 100%;height:182px;padding:19px;scroll-snap-align:center}
+ .landing-page .shot-copy strong{font-size:22px}
+ .landing-page .shot-copy span{font-size:16px;line-height:1.5;margin-top:8px}
+ .landing-page .shot-device img{width:134px;height:134px}
+ .landing-page .shot-ios img{width:126px}
+ .landing-page .swipe-hint{font-size:13px;margin:5px 0 0;color:#597063}
+ .landing-page .site-footer .footer-top,.landing-page .site-footer .footer-bottom{align-items:center;text-align:center;gap:12px}
+ .landing-page .footer-identity{display:flex;flex-direction:column;gap:4px}
+ .landing-page .footer-brand img.brand-wordmark{width:145px}
+ .landing-page .footer-identity p{font-size:15px;margin-top:6px}
+ .landing-page .footer-project,.landing-page .footer-legal{justify-content:center;gap:0 16px}
+ .landing-page .footer-project a,.landing-page .footer-project button,.landing-page .footer-legal a{font-size:15px}
+ .landing-page .footer-license{justify-content:center;font-size:12px}
+}
+@media(max-width:370px){
+ .landing-page .page{padding-inline:16px}
+ .landing-page .nav .brand-wordmark{width:166px}
+ .landing-page .intro-simple h1.handwritten{font-size:42px}
+ .landing-page .intro-simple .lead{font-size:17px}
+ .landing-page .direct-actions .start-button{font-size:15px}
+ .landing-page .app-store-action{font-size:14px;padding-inline:8px}
+ .landing-page .shot{padding:15px}
+ .landing-page .shot-device img{width:112px;height:112px}
+ .landing-page .shot-ios img{width:110px}
+ .landing-page .shot-copy strong{font-size:20px}
+}
+
+/* Slate control system shared with the companion; the pixel identity stays emerald. */
+:root{--control:#326da8;--control-hover:#275886;--control-soft:#e8eff8;--control-border:#bdcee0}
+.primary,.landing-page .primary{background:var(--control);border:1px solid #244e79;border-radius:20px;box-shadow:inset 0 1px 0 #ffffff25,0 5px 16px #17334f13}
+.primary:hover,.landing-page .primary:hover{background:var(--control-hover)}
+.nav-download,.models,.landing-page .models,.app-store-action,.close,.download-icon{border-color:var(--control-border);background:var(--control-soft);color:#284c70}
+.models button.selected,.landing-page .models button.selected{color:#173c60;background:#fff;border:1px solid var(--control-border);box-shadow:0 2px 7px #17334f12}
+button:focus-visible,a:focus-visible,#scene:focus-visible{outline-color:#5795d3}
+button,.primary{transition:background 140ms ease-out,transform 140ms ease-out,border-color 140ms ease-out}
+@media(prefers-reduced-motion:reduce){button,.primary{transition:none;transform:none}}

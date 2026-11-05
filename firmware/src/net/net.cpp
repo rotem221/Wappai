@@ -140,7 +140,7 @@ static void sendHello() {
     modelLock();String custom=model.customPip?model.customPip->pip:"";modelUnlock();
     String m = "{\"type\":\"hello\",\"device_id\":\"" + WiFi.macAddress() + "\",\"fw_version\":\"" FW_VERSION
                "\",\"name\":\"" DEVICE_NAME "\",\"board\":\"ws-s3-175c\",\"screen\":[466,466],\"has_mic\":true,\"has_speaker\":true,\"battery\":" +
-               batteryJson() + ",\"storage\":"+recordingStoreStatus()+",\"custom_pip_id\":\""+custom+"\"}";
+               batteryJson() + ",\"pip_cache_version\":1,\"storage\":"+recordingStoreStatus()+",\"custom_pip_id\":\""+custom+"\"}";
     ws.sendTXT(m);
 }
 
@@ -276,7 +276,7 @@ static void onText(const char *txt, size_t len) {
             strlcpy(m.expression.motion,p["motion"]|"",sizeof m.expression.motion);
             strlcpy(m.cue,p["cue"]|"none",sizeof m.cue);m.expressionNew=true;m.lastActivity=millis();
         }
-    } else if (!strcmp(t,"pip.install") || !strcmp(t,"pip.remove")) {
+    } else if (!strcmp(t,"pip.install") || !strcmp(t,"pip.cache") || !strcmp(t,"pip.remove")) {
         const char *id=d["command_id"]|"";
         if(strlen(id)==32 && strspn(id,"0123456789abcdef")==32){
             if(m.assetBusy || m.recording || audioPlaying())assetReply(id,"busy");
@@ -288,6 +288,12 @@ static void onText(const char *txt, size_t len) {
             m.pip=d["rig"]; m.pipColor=d["color"]|0U; m.pipNew=true;
         }
     } else if (!strcmp(t, "config")) {
+        const char *cid=d["command_id"]|"";
+        if(cid[0]){
+            if(strlen(cid)!=32 || strspn(cid,"0123456789abcdef")!=32){modelUnlock();return;}
+            if(m.localControl || m.configCommand[0]){modelUnlock();assetReply(cid,"busy");return;}
+            strlcpy(m.configCommand,cid,33);
+        }
         if(d["live_transcription"].is<bool>())m.liveTranscription=d["live_transcription"];
         if(d["shake_reaction"].is<bool>())m.shakeReaction=d["shake_reaction"];
         if(d["character_sounds"].is<bool>())m.characterSounds=d["character_sounds"];
@@ -295,8 +301,8 @@ static void onText(const char *txt, size_t len) {
         if (d["reduced_motion"].is<bool>()) { m.reducedMotion=d["reduced_motion"]; m.pipNew=true; }
         if (d["dim_seconds"].is<int>()) m.dimMs=constrain((int)d["dim_seconds"],5,300)*1000;
         if (d["sleep_seconds"].is<int>()) m.deepMs=constrain((int)d["sleep_seconds"],60,3600)*1000;
-        if (d["brightness"].is<int>()) m.brightness = d["brightness"];
-        if (d["volume"].is<int>()) m.volume = constrain((int)d["volume"], 0, 100);
+        if (m.localControl!=2 && d["brightness"].is<int>()) m.brightness = constrain((int)d["brightness"],20,255);
+        if (m.localControl!=1 && d["volume"].is<int>()) m.volume = constrain((int)d["volume"], 0, 100);
         m.configNew = true;
     } else if (!strcmp(t, "card")) {
         strlcpy(m.cardKind, d["kind"] | "", sizeof m.cardKind);
@@ -667,18 +673,22 @@ static void fetchPip() {
     String id=d["command_id"]|"",pid=d["pip_id"]|"",aid=d["asset_id"]|"";
     auto fail=[&](const char *why){modelLock();model.assetBusy=false;modelUnlock();assetReply(id,why);};
     if(pid.length()!=32 || strspn(pid.c_str(),"0123456789abcdef")!=32){fail("invalid");return;}
-    modelLock();bool match=model.customPip && pid==model.customPip->pip;bool cached=match && aid==model.customPip->asset;modelUnlock();
+    bool cacheOnly=String(d["type"]|"")=="pip.cache";
+    modelLock();bool match=model.customPip && pid==model.customPip->pip;modelUnlock();
     if(String(d["type"]|"")=="pip.remove"){
-        if(!match){fail("applied");return;}
-        if(SPIFFS.exists("/wappai.bin")&&!SPIFFS.remove("/wappai.bin")){fail("storage");return;}
-        SPIFFS.remove("/wappai.old");SPIFFS.remove("/wappai.tmp");
-        modelLock();model.assetRemove=true;strlcpy(model.pipCommand,id.c_str(),33);modelUnlock();return;
+        if(!pipRemove(pid.c_str())){fail("storage");return;}
+        modelLock();model.catalogNew=true;model.assetRemove=match;strlcpy(model.pipCommand,id.c_str(),33);modelUnlock();return;
     }
-    if(cached){modelLock();model.pip=PIXEL_RIG_COUNT;model.pipColor=0;model.pipNew=true;strlcpy(model.pipCommand,id.c_str(),33);modelUnlock();return;}
+    auto *cached=pipCached(pid.c_str());
+    char cachePath[32];pipPath(cachePath,pid.c_str());
+    if(cached && aid==cached->asset && (!d["packed"].as<bool>() || SPIFFS.exists(cachePath))){
+        modelLock();model.catalogNew=true;if(!cacheOnly){model.pendingPip=cached;model.assetSwap=true;}else delete cached;
+        strlcpy(model.pipCommand,id.c_str(),33);modelUnlock();return;
+    }delete cached;
     int expected=d["bytes"]|0;String sha=d["sha256"]|"";
-    if(aid.length()!=32 || strspn(aid.c_str(),"0123456789abcdef")!=32 || expected<756 || expected>160000 || sha.length()!=64){fail("invalid");return;}
+    if(aid.length()!=32 || strspn(aid.c_str(),"0123456789abcdef")!=32 || expected<20 || expected>160000 || sha.length()!=64){fail("invalid");return;}
     HTTPClient http;NetworkClientSecure sc;NetworkClient pc;
-    String u=String(tls?"https://":"http://")+host+":"+port+"/v1/device/pips/"+aid+".bin";
+    String u=String(tls?"https://":"http://")+host+":"+port+"/v1/device/pips/"+aid+".bin"+(d["packed"]==true?"?packed=1":"");
     bool ok=tls?(sc.setCACert(CA_CERTS),http.begin(sc,u)):http.begin(pc,u);
     if(!ok){fail("network");return;}http.setTimeout(10000);http.addHeader("Authorization","Bearer "+token);
     int code=http.GET(),len=http.getSize();uint8_t *bytes=nullptr;size_t got=0;
@@ -691,7 +701,7 @@ static void fetchPip() {
     PipAsset *asset=sha==hex?pipDecode(bytes,got):nullptr;
     if(!asset || pid!=asset->pip || aid!=asset->asset){delete asset;free(bytes);fail("invalid");return;}
     if(!pipSave(bytes,got)){delete asset;free(bytes);fail("storage");return;}free(bytes);
-    modelLock();model.pendingPip=asset;model.assetSwap=true;strlcpy(model.pipCommand,id.c_str(),33);model.lastActivity=millis();modelUnlock();
+    modelLock();model.catalogNew=true;if(cacheOnly)delete asset;else{model.pendingPip=asset;model.assetSwap=true;}strlcpy(model.pipCommand,id.c_str(),33);model.lastActivity=millis();modelUnlock();
 }
 
 static void netTask(void *) {
@@ -765,7 +775,7 @@ static void netTask(void *) {
         if (millis() - lastStatus > (micActive || micStopPending ? 5000u:60000u) && model.server) {
             lastStatus = millis();
             String st = "{\"type\":\"status\",\"rssi\":" + String(WiFi.RSSI()) + ",\"heap\":" + String(ESP.getFreeHeap()) +
-                        ",\"uptime\":" + String(millis() / 1000) + ",\"battery\":" + batteryJson() + ",\"storage\":"+recordingStoreStatus()+",\"recording\":"+(micActive?"true":"false")+",\"buffered_seconds\":"+String(audioMicQueued()/32000)+"}";
+                        ",\"uptime\":" + String(millis() / 1000) + ",\"battery\":" + batteryJson() + ",\"pip_cache_version\":1,\"storage\":"+recordingStoreStatus()+",\"recording\":"+(micActive?"true":"false")+",\"buffered_seconds\":"+String(audioMicQueued()/32000)+"}";
             ws.sendTXT(st);
         }
         vTaskDelay(pdMS_TO_TICKS(micActive ? 2 : 5));

@@ -38,3 +38,11 @@ The iOS `.ipa` is unsigned and requires personal signing, or an Xcode build with
 The public history starts from a sanitized snapshot. Private keys, personal endpoints, device backups and the original development history are intentionally absent. Configure your own Hub using the guide above.
 
 MIT for original code/artwork; see [third-party notices](THIRD_PARTY.md) for fonts, frameworks and dependencies. Independent project; not affiliated with Waveshare, Apple, OpenAI, Anthropic or ElevenLabs.
+
+## Display and controls — November 2026
+
+The current source adds six full-screen clock faces, a hours/minutes/seconds timer picker, right-edge brightness and left-edge volume gestures across device pages, and six persistent character slots. Slate-blue controls with subtle borders are shared by the device, native iOS, Web and presentation previews. Horizontal transitions cache their destination and use a 180 ms ease-out; recording, playback and reduced motion retain their priority.
+
+The landing and Hub development simulator preview layouts at 466×466, 368×448 and 480×480. Only the 1.75C firmware is currently hardware-qualified for development use; the other previews do not imply working board drivers.
+
+See [the end-user rollout plan](docs/END_USER_ROLLOUT.he.md) for the proposed self-hosted pilot, guided setup, TestFlight and later managed-service milestones. The download catalog describes published artifacts independently of this source snapshot.

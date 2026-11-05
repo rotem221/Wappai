@@ -12,6 +12,7 @@ public:
     bool canCancel() const { return canCancel_; }
     void close() { active_ = false; }
     // Feed the touch state every frame (down = finger on the glass).
+    void cancelTouch(){if(down_ && dragging_)scroll_=scrollStart_;down_=false;dragging_=false;}
     void touch(bool down, int x, int y, uint32_t now);
     void tap(int x, int y, uint32_t now);       // synthetic tap (serial tests)
     void render(LGFX_Sprite &s, uint32_t now);

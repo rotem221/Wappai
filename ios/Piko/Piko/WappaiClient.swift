@@ -183,6 +183,10 @@ enum SecureStore {
                             if let battery=obj["battery"] as? [String:Any] {device.battery = .init(pct:battery["pct"] as? Int,charging:battery["charging"] as? Bool)}
                             continue
                         }
+                        if type=="settings.updated",let settings=obj["settings"] as? [String:Any] {
+                            let data=try JSONSerialization.data(withJSONObject:settings)
+                            preferences=try JSONDecoder().decode(DeviceSettings.self,from:data);continue
+                        }
                         if type=="session.active" || type=="session.deleted" {let previous=active;try await refresh(preserveCurrentTurn:true);if active != previous {state="idle"};continue}
                         if let sid=obj["session_id"] as? String,sid != active {continue}
                         if type=="transcript.partial" {liveTranscript=preferences.live_transcription == true ? (obj["text"] as? String ?? ""):""}

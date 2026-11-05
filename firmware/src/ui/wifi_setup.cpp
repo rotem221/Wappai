@@ -1,4 +1,5 @@
 #include "wifi_setup.h"
+#include "theme.h"
 #include <string.h>
 #include "app/model.h"
 #include "config.h"
@@ -13,8 +14,8 @@ static const int KX0 = CX - (4 * KW + 3 * KG) / 2, KY0 = 134;
 static const int BY = 360, BH = 48;                          // bottom row: shift | page | connect
 static const int PW_Y = 86, PW_H = 38;
 
-static const uint32_t C_BG = 0x000000, C_KEY = 0x16232A, C_KEY_HI = 0x2B4A55, C_TXT = 0xE6EEF2, C_MUTED = 0x8AA0AD,
-                      C_ACC = 0x62F2DF, C_ACC_INK = 0x05302A, C_BAD = 0xFF6A4D;
+static const uint32_t C_BG = 0x000000, C_KEY = uiTheme::surface, C_KEY_HI = uiTheme::raised, C_TXT = uiTheme::text, C_MUTED = uiTheme::muted,
+                      C_ACC = uiTheme::accent, C_ACC_INK = uiTheme::ink, C_BAD = 0xFF6A4D;
 
 static const char *PAGES[4] = {"abcdefghijklmno", "pqrstuvwxyz.-_@", "1234567890!#$%&", "*+=/?:;,'\"()~^ "};
 static const char *PAGE_NAME[4] = {"a-o", "p-z", "123", "#+="};
@@ -218,7 +219,7 @@ void WifiSetup::drawList(LGFX_Sprite &s, uint32_t now) {
         int y = LIST_TOP + i * ROW_H - scroll_;
         if (y + ROW_H < LIST_TOP || y > LIST_BOT) continue;
         int x = CX - ROW_W / 2;
-        s.fillRoundRect(x, y + 3, ROW_W, ROW_H - 6, 14, col(s, C_KEY));
+        uiTheme::button(s,x,y+3,ROW_W,ROW_H-6,14,C_KEY);
         int cy = y + ROW_H / 2;
         bars(s, x + 16, cy + 9, aps_[i].rssi, C_ACC);                 // left: signal
         if (!aps_[i].open) lock(s, x + 52, cy + 2, C_MUTED);
@@ -238,7 +239,7 @@ void WifiSetup::drawList(LGFX_Sprite &s, uint32_t now) {
         int h = vis * vis / total, y = LIST_TOP + (vis - h) * scroll_ / max(1, total - vis);
         s.fillRoundRect(CX + ROW_W / 2 + 8, y, 4, h, 2, col(s, 0x33424B));
     }
-    s.fillRoundRect(CX - 80, 400, 160, 38, 19, col(s, scanning_ ? 0x22313A : C_KEY));
+    uiTheme::button(s,CX-80,400,160,38,19,scanning_?uiTheme::raised:C_KEY);
     bidi(s, scanning_ ? "סורק…" : "סריקה מחדש", 420, scanning_ ? C_MUTED : C_ACC, 0.75f);
 }
 
@@ -269,7 +270,7 @@ void WifiSetup::drawKeys(LGFX_Sprite &s, uint32_t now) {
     for (int k = 0; k < 16; k++) {
         int r = k / 4, c = k % 4, kx = KX0 + c * (KW + KG), ky = KY0 + r * (KH + KG);
         bool hi = pressedKey_ == k && (int32_t)(pressedUntil_ - now) > 0;
-        s.fillRoundRect(kx, ky, KW, KH, 12, col(s, hi ? C_KEY_HI : C_KEY));
+        uiTheme::button(s,kx,ky,KW,KH,12,hi?C_KEY_HI:C_KEY,hi);
         int mx = kx + KW / 2, my = ky + KH / 2;
         if (k == 15) {                                         // backspace icon
             uint16_t ic = col(s, C_TXT);
@@ -291,19 +292,19 @@ void WifiSetup::drawKeys(LGFX_Sprite &s, uint32_t now) {
     // bottom row: shift | next page | connect
     int w0 = 80, w1 = 80, w2 = 110, gx = CX - (w0 + w1 + w2 + 2 * KG) / 2;
     bool hs = pressedKey_ == 16 && (int32_t)(pressedUntil_ - now) > 0;
-    s.fillRoundRect(gx, BY, w0, BH, 14, col(s, shift_ ? C_ACC : (hs ? C_KEY_HI : C_KEY)));
+    uiTheme::button(s,gx,BY,w0,BH,14,shift_?C_ACC:(hs?C_KEY_HI:C_KEY),hs);
     uint16_t sc = col(s, shift_ ? C_ACC_INK : C_TXT);
     int sx = gx + w0 / 2, sy = BY + BH / 2;
     s.fillTriangle(sx, sy - 12, sx - 11, sy + 1, sx + 11, sy + 1, sc);
     s.fillRect(sx - 5, sy + 1, 10, 9, sc);
     bool hp = pressedKey_ == 17 && (int32_t)(pressedUntil_ - now) > 0;
-    s.fillRoundRect(gx + w0 + KG, BY, w1, BH, 14, col(s, hp ? C_KEY_HI : C_KEY));
+    uiTheme::button(s,gx+w0+KG,BY,w1,BH,14,hp?C_KEY_HI:C_KEY,hp);
     s.setTextSize(0.8f);
     s.setTextDatum(lgfx::middle_center);
     s.setTextColor(col(s, C_ACC));
     s.drawString(PAGE_NAME[(page_ + 1) % 4], gx + w0 + KG + w1 / 2, BY + BH / 2 + 1);
     int ox = gx + w0 + w1 + 2 * KG;
-    s.fillRoundRect(ox, BY, w2, BH, 14, col(s, C_ACC));
+    uiTheme::button(s,ox,BY,w2,BH,14,C_ACC);
     s.setTextColor(col(s, C_ACC_INK));
     s.setTextDatum(lgfx::middle_center);
     s.setTextSize(0.8f);

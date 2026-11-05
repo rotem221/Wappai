@@ -4,7 +4,7 @@ Wappai supplies software, not hardware. Purchase, shipping, taxes, warranty and 
 
 | Board ID | Display / touch | Release state |
 | --- | --- | --- |
-| `ws-s3-175c` | 466×466 round / CST9217 | Existing 1.0.0-dev.1 development package; known connected silver unit |
+| `ws-s3-175c` | 466×466 round / CST9217 | 1.1.4-dev.1 development package; known connected silver unit |
 | `ws-s3-175` | 466×466 round / CST9217 | No Wappai firmware approved for this separate board |
 | `ws-s3-18` | 368×448 / CST820 | BSP and physical validation incomplete; distribution blocked |
 | `ws-s3-216` | 480×480 / CST9220 | BSP and physical validation incomplete; distribution blocked |
@@ -28,6 +28,10 @@ Before adding a board or replacing an advertised binary:
 5. Record board revision, source commit, toolchain, artifact hashes, date and actual evidence. Passing a build or simulator test alone is not hardware qualification. No guarantee of zero defects is implied.
 6. Run `python3 tools/validate_firmware_catalog.py` and the browser/Swift policy tests. Publish separate immutable release assets per board, then update the catalog and the installer together. Retain previous recovery images. Any new board requires an explicit change to the validator's supported-board gate after completing qualification.
 
-For this revision, the existing 1.75C source build and software tests pass. A fresh physical flash/upgrade test was not performed and no new firmware binary was released. The 1.8 and 2.16 boards were not connected for qualification.
+For 1.1.4-dev, source and software checks pass; the known 1.75C received an app-only upgrade preserving its settings and character store. The separately built public image uses empty credentials. A factory-reset public onboarding run and full battery endurance are still unqualified. The 1.8 and 2.16 boards were not connected for qualification.
 
 Official references: [1.75C](https://www.waveshare.com/esp32-s3-touch-amoled-1.75c.htm), [1.75](https://www.waveshare.com/esp32-s3-touch-amoled-1.75.htm), [1.8](https://www.waveshare.com/product/esp32-s3-touch-amoled-1.8.htm), [2.16](https://www.waveshare.com/esp32-s3-touch-amoled-2.16.htm), [ESP-IDF OTA](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-reference/system/ota.html).
+
+## Responsive presentation layouts — 2026-11-05
+
+The landing and development simulator now share a native-resolution layout renderer: round 466×466, rectangular 368×448 and square 480×480. Controls, timer columns and six clock faces use shape-specific margins and un-stretched vector drawing. These are browser previews with illustrative data. This update does not qualify the 1.8, 2.16 or separate 1.75 BSP, power rails, peripherals or battery behavior.

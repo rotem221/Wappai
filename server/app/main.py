@@ -167,6 +167,8 @@ async def converse(text: str, heard: bool = True, on_done=None, t0: float | None
     try:
         if heard:
             await hub.emit({"type": "heard", "text": text})
+        from . import device_controls
+        control_reply=await device_controls.apply(text,hub,admin,wappai.emit)
         previous = wappai.store.rows('SELECT text FROM messages WHERE session_id=? AND role=? ORDER BY created DESC,rowid DESC LIMIT 1', (wappai.active, 'assistant'))
         preferences.remember(text, previous[0]['text'] if previous else '')
         character_gender = config.ASSISTANT_GENDER
@@ -182,7 +184,7 @@ async def converse(text: str, heard: bool = True, on_done=None, t0: float | None
                 log.info("Home display lookup unavailable")
         if target:
             await hub.emit({"type":"device.badge","dev":target,"pending":True,"ttl":60})
-        ctx = await context.build(hub.device, text)
+        ctx = "" if control_reply is not None else await context.build(hub.device, text)
         if smart_home:
             ctx += '\nתצוגה: זו בקשת בית חכם. אין להציג מזג אוויר בגלל המילה מזגן או מעלות. אחרי בדיקת תוצאת הפעולה בכלים, שלח <show what="device" entity="הישות המדויקת"/> לתצוגת חיווי קטן. אל תטען להצלחה ללא תוצאת כלי.'
         ctx += "\n" + history
@@ -284,11 +286,14 @@ async def converse(text: str, heard: bool = True, on_done=None, t0: float | None
         if weather_requested(text) and await show_card({"what": "weather"}, ttl=16):
             shown.add("weather")
         marks["context"] = time.time() - t0
-        async for chunk in wappai.current_brain().ask(text, ctx):
-            marks.setdefault("first_token", time.time() - t0)
-            await handle(parser.feed(chunk))
+        if control_reply is not None:
+            await handle([Event('sentence',control_reply)])
+        else:
+            async for chunk in wappai.current_brain().ask(text, ctx):
+                marks.setdefault("first_token", time.time() - t0)
+                await handle(parser.feed(chunk))
         await handle(parser.finish())
-        if ask_address and not flags['meeting'] and preferences.QUESTION not in ' '.join(spoken):
+        if control_reply is None and ask_address and not flags['meeting'] and preferences.QUESTION not in ' '.join(spoken):
             await handle([Event('sentence', preferences.QUESTION)])
         if target: await device_badge(target['id'])
         await q.put(None)
@@ -566,13 +571,14 @@ async def ws_endpoint(ws: WebSocket):
                     if new is None:
                         await hub.emit({"type": "toast", "text": "לא הצלחתי לשנות את המכשיר"}, only_kind="board")
                 asyncio.create_task(_tog())
-            elif t == "setting":
+            elif t == "setting" and conn.kind == "board":
                 s_ = admin.settings()
-                if isinstance(data.get("brightness"), int):
+                if type(data.get("brightness")) is int:
                     s_["brightness"] = max(20, min(255, data["brightness"]))
-                if isinstance(data.get("volume"), int):
+                if type(data.get("volume")) is int:
                     s_["volume"] = max(0, min(100, data["volume"]))
                 admin.SETTINGS_FILE.write_text(json.dumps(s_, ensure_ascii=False, indent=1))
+                await wappai.emit({"type":"settings.updated","settings":admin.current_settings()})
             elif t == "pip.selected" and conn.kind == "board":
                 await hub.emit(data, only_kind="sim")
             elif t == "touch":

@@ -1,0 +1,19 @@
+{
+  "responsive": [
+    {
+      "width": 1440,
+      "scroll": 1440
+    },
+    {
+      "width": 390,
+      "scroll": 390
+    },
+    {
+      "width": 320,
+      "scroll": 320
+    }
+  ],
+  "native_layouts": 24,
+  "reduced_motion": "passed",
+  "page_errors": []
+}

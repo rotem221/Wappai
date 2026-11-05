@@ -130,7 +130,7 @@ struct RootView:View {
                 if let index=args.firstIndex(of:"--pair-code"),args.count>index+1 {await client.pair(code:args[index+1])}
                 else {client.start()}
             }
-        }.tint(Color(rgb:0x258E73))
+        }.tint(Color(rgb:0x326DA8))
          .task(id:(client.device.board ?? "")+":"+(client.device.fw_version ?? "")+":"+String(client.device.online)) {
              if client.device.online {await firmwareUpdates.check(board:client.device.board,version:client.device.fw_version,fixture:client.uiTesting)}
          }

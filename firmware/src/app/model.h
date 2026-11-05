@@ -6,7 +6,7 @@
 enum RingMode : uint8_t { RING_NONE, RING_REC, RING_THINK, RING_SPEAK };
 
 struct Model {
-    PipAsset *customPip=nullptr,*pendingPip=nullptr;bool assetSwap=false,assetRemove=false,assetBusy=false;
+    PipAsset *customPip=nullptr,*pendingPip=nullptr;bool assetSwap=false,assetRemove=false,assetBusy=false,catalogNew=false;
     char pipCommand[33]="";
     uint8_t pip = 0; uint32_t pipColor = 0; bool pipNew = false;
     PipPose expression;bool expressionNew=false;uint8_t expressionRig=0;uint32_t expressionColor=0;char expressionId[33]="";char cue[12]="none";bool characterSounds=true;
@@ -48,6 +48,7 @@ struct Model {
     uint8_t brightness = 170;
     uint8_t volume = 80;           // 0..100
     bool configNew = false;
+    uint8_t localControl=0;char configCommand[33]="";
 
     // ---- information screens (cards + side pages), filled by the net task
     struct Weather { bool ok = false; int t = 0, feels = 0, mn = 0, mx = 0, rain = 0, hum = 0; char text[40] = ""; char icon[8] = "";

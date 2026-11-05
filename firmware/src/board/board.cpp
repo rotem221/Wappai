@@ -1,3 +1,4 @@
+#include "ui/page_slide.h"
 // Display, touch, IMU, RTC and expander for the Waveshare AMOLED 1.75 (see board.h).
 #include <Arduino.h>
 #include <time.h>
@@ -90,7 +91,7 @@ static void waitTE() {
     while (digitalRead(PIN_LCD_TE) == LOW && micros() - t0 < 20000) {}
 }
 
-void LGFX::flush(LGFX_Sprite &s, int x, int y, int w, int h, bool edgeBand) {
+void LGFX::flush(LGFX_Sprite &s, int x, int y, int w, int h, bool edgeBand,const uint16_t *previous,int slideRemaining) {
     int x1 = min(WIDTH, x + w), y1 = min(HEIGHT, y + h);
     x = max(0, x) & ~1;
     y = max(0, y) & ~1;
@@ -112,7 +113,7 @@ void LGFX::flush(LGFX_Sprite &s, int x, int y, int w, int h, bool edgeBand) {
         for(int i=0;i<regions.count;i++){
             int left=regions.spans[i].left,bw=regions.spans[i].right-left;
             waitDMA();
-            for(int r=0;r<bh;r++)memcpy(band+r*bw,src+(yy+r)*WIDTH+left,bw*2);
+            for(int r=0;r<bh;r++){if(previous)slideRow(band+r*bw,previous+(yy+r)*WIDTH,src+(yy+r)*WIDTH,WIDTH,left,bw,slideRemaining);else memcpy(band+r*bw,src+(yy+r)*WIDTH+left,bw*2);}
             pushImageDMA(left,yy,bw,bh,(const lgfx::swap565_t*)band);
         }
     }

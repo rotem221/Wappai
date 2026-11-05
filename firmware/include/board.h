@@ -84,7 +84,7 @@ public:
     }
     bool init();
     bool getTouch(lgfx::touch_point_t *tp);
-    void flush(LGFX_Sprite &s, int x, int y, int w, int h, bool edgeBand=false);   // copy a region of the full-screen sprite (even-aligned)
+    void flush(LGFX_Sprite &s, int x, int y, int w, int h, bool edgeBand=false,const uint16_t *previous=nullptr,int slideRemaining=0);   // copy a region of the full-screen sprite (even-aligned)
     void panelBrightness(uint8_t v);                          // CO5300 0x51
     void panelSleep(bool on);                                 // display off + sleep-in / wake
 };

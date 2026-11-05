@@ -6,7 +6,7 @@
 <title>Wappai · Pips</title>
 <link rel="icon" href="/sim/wappai-mark.png">
 <style>
-  :root { --bg:#0b0d10; --panel:#14181d; --ink:#e8eef2; --muted:#8090a0; --accent:#62f2df; }
+  :root { --bg:#0b0d10; --panel:#172536; --ink:#e8eef2; --muted:#8090a0; --accent:#a4d2ff; }
   * { box-sizing: border-box; }
   body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui, "Rubik", sans-serif; }
   main { max-width:1100px; margin:0 auto; padding:16px; display:grid; grid-template-columns: minmax(0,1fr) 340px; gap:20px; }
@@ -18,16 +18,16 @@
   .sub { position:absolute; left:15%; right:15%; bottom:9%; text-align:center; font-size:clamp(13px,2.6vw,19px);
          color:#dfe8ee; text-shadow:0 0 8px #000; min-height:2.6em; }
   .row { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
-  button { background:#1d232b; color:var(--ink); border:1px solid #2c3540; border-radius:999px; padding:6px 12px; cursor:pointer; font:inherit; font-size:13px; }
+  button { background:#253b54; color:var(--ink); border:1px solid #496783; border-radius:999px; padding:6px 12px; cursor:pointer; font:inherit; font-size:13px; }
   button:hover { border-color:var(--accent); }
-  button.on { background:var(--accent); color:#04201c; }
+  button.on { background:var(--accent); color:#102337; }
   aside { background:var(--panel); border-radius:16px; padding:14px; display:flex; flex-direction:column; gap:12px; min-height:300px; }
   h2 { font-size:14px; margin:0; color:var(--muted); font-weight:500; }
   #log { flex:1; overflow:auto; max-height:46vh; display:flex; flex-direction:column; gap:6px; font-size:14px; }
   .me { align-self:flex-start; background:#22303a; padding:6px 10px; border-radius:12px; }
   .it { align-self:flex-end; background:#14302c; padding:6px 10px; border-radius:12px; }
   form { display:flex; gap:6px; }
-  input { flex:1; background:#0e1115; border:1px solid #2c3540; color:var(--ink); border-radius:10px; padding:8px 10px; font:inherit; }
+  input { flex:1; background:#0e1115; border:1px solid #496783; color:var(--ink); border-radius:10px; padding:8px 10px; font:inherit; }
   .status { font-size:12px; color:var(--muted); }
   #ptt { width:100%; padding:12px; font-size:15px; border-radius:12px; }
   #ptt.rec { background:#ff5c5c; color:#fff; }
@@ -38,6 +38,7 @@
   <section class="stage">
     <div class="device"><canvas id="c" width="466" height="466"></canvas><div class="sub" id="sub"></div></div>
     <div class="row"><label>תצוגת מסך <select id="screenShape"><option value="round">1.75C עגול</option><option value="rect">1.8 מלבני</option><option value="square">2.16 מרובע</option></select></label></div>
+<div class="row"><label>תצוגה <select id="screenMode"><option value="pet">דמות חיה</option><option value="clock">שעון</option><option value="controls">הגדרות והחלקות</option><option value="timer-picker">בחירת זמן</option></select></label><label>שעון <select id="clockStyle"><option value="0">מזג אוויר</option><option value="1">קלאסי</option><option value="2">ספרות</option><option value="3">מספרים</option><option value="4">ספורט</option><option value="5">חצות</option></select></label></div><p class="status">תצוגת פיתוח. דגמי 1.8 ו־2.16 הם הדמיית ממשק; הקושחה טרם אושרה עבורם.</p>
     <div class="row" id="pips"></div>
     <div class="row" id="emos"></div>
     <div class="row" id="gests"></div>
@@ -53,6 +54,7 @@
 <script src="/sim/face.js"></script>
 <script type="module">
 import {screenEdge} from '/sim/screen-edge.js';
+import {displayProfiles,drawDeviceUI} from '/sim/device-ui.js';
 "use strict";
 const token = new URLSearchParams(location.search).get("token") || "";
 const cv = document.getElementById("c"), ctx = cv.getContext("2d"), img = ctx.createImageData(466, 466);
@@ -60,7 +62,7 @@ const sceneCanvas=document.createElement('canvas');sceneCanvas.width=466;sceneCa
 const sceneContext=sceneCanvas.getContext('2d');
 let screenShape='round';
 document.getElementById('screenShape').onchange=e=>{
-  screenShape=e.target.value;cv.width=screenShape==='rect'?368:466;cv.height=screenShape==='rect'?448:466;
+  screenShape=e.target.value;cv.width=displayProfiles[screenShape].width;cv.height=displayProfiles[screenShape].height;
   cv.style.borderRadius=screenShape==='round'?'50%':'12%';cv.parentElement.style.borderRadius=cv.style.borderRadius;
   cv.parentElement.style.aspectRatio=`${cv.width}/${cv.height}`;
 };
@@ -81,9 +83,12 @@ fetch("/sim/emotions.json").then(r => r.json()).then(async data => {
   for (const g of ["blink", "nod", "shake", "jump", "pop", "wiggle", "tilt_left", "tilt_right", "look_left", "look_right"]) {
     const b = document.createElement("button"); b.textContent = g; b.onclick = () => face.gesture(g); gb.appendChild(b);
   }
-  let last = performance.now();
+  let last = performance.now(),painted=0;
   const loop = (now) => {
-    face.update((now - last) / 1000); last = now;
+    if(document.hidden || now-painted<33){requestAnimationFrame(loop);return;}painted=now;
+    const mode=document.getElementById('screenMode').value;
+    if(mode!=='pet'){drawDeviceUI(cv,mode,now/1000,screenShape,Number(document.getElementById('clockStyle').value));sub.hidden=true;last=now;requestAnimationFrame(loop);return;}sub.hidden=false;
+    face.update(Math.min((now - last) / 1000,.1)); last = now;
     face.talk = level;
     face.render(img, 233, 233);
     sceneContext.putImageData(img,0,0);ctx.fillStyle='#000';ctx.fillRect(0,0,cv.width,cv.height);

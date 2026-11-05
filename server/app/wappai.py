@@ -282,6 +282,7 @@ def register(app,context):
             saved[k]=value
         admin.SETTINGS_FILE.write_text(json.dumps(saved,ensure_ascii=False)); admin.apply_settings()
         await ctx.hub.emit({'type':'config',**{k:saved[k] for k in ('brightness','volume','live_transcription','hold_to_talk','shake_reaction','character_sounds','reduced_motion','dim_seconds','sleep_seconds') if k in saved}},only_kind='board')
+        await emit({'type':'settings.updated','settings':admin.current_settings()})
         return {'ok':True}
     @app.post('/v1/pips')
     async def create_pip(request:Request):

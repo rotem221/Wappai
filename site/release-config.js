@@ -10,9 +10,9 @@ export function publicAppStoreUrl(value = appStoreUrl) {
 }
 export const firmware = Object.freeze({
   path: './firmware/Wappai-1.75C-factory.bin',
-  version: '1.0.0-dev.1',
-  bytes: 3455040,
-  sha256: 'ed8f6600a79160ba2b54b7beb6c3b4c7e0c775e1bcf8e124feb6c63a532508b9',
+  version: '1.1.4-dev.1',
+  bytes: 3488528,
+  sha256: 'f613f5b9890be3755f34526d456ce6fec0f87826e1c77cd83bc270724557bd7c',
 });
 
 export const boardNames = Object.freeze({

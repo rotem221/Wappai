@@ -356,3 +356,27 @@ def test_image_bridge_failure_is_actionable(studio,monkeypatch,failure):
     assert 'sensitive' not in str(error.value) and 'private-test-token' not in str(error.value)
     assert calls==(['GET','POST'] if failure=='generation_timeout' else ['GET'])
     assert 'נשמרו' in str(error.value) or failure=='unavailable'
+
+def test_compressed_gallery_restore_keeps_selection_and_originals(studio):
+    import zlib,struct
+    s,c,h=studio;ids=[]
+    async def image(*args):return sheet()
+    s.image=image
+    for i in range(3):
+        j=make_job(s);asyncio.run(s.run(j['id'],'build'));ids.append(j['pip_id'])
+    original={p['id']:(s.root/'assets'/p['asset_id']/'character.bin').read_bytes() for p in s.store.rows('SELECT * FROM pips WHERE asset_id IS NOT NULL')}
+    s.select(ids[1]);s.hub.device={'pip_cache_version':1};s.hub.conns={type('Board',(),{'kind':'board'})()};sent=[]
+    async def applied(obj,**kw):
+        sent.append(obj)
+        assert s.selected()==ids[1]
+        response=c.get(f"/v1/device/pips/{obj['asset_id']}.bin?packed=1",headers={'Authorization':'Bearer device-test'})
+        data=response.content
+        assert response.status_code==200 and data[:4]==b'WPC1'
+        assert hashlib.sha256(data).hexdigest()==obj['sha256'] and len(data)==obj['bytes']
+        raw=zlib.decompress(data[8:]);assert raw==original[obj['pip_id']] and len(raw)==struct.unpack('<I',data[4:8])[0]
+        s.hub.receipts[obj['command_id']].set_result({'status':'applied'})
+    s.hub.emit=applied;asyncio.run(s.restore())
+    assert len(sent)==3 and sent[0]['type']=='pip.install' and all(p['type']=='pip.cache' for p in sent[1:])
+    assert s.selected()==ids[1] and len(s.store.rows('SELECT * FROM pips'))==6
+    assert c.get(f"/v1/device/pips/{sent[0]['asset_id']}.bin?packed=1",headers=h).status_code==401
+    s.hub.device={};old=s.install_payload(s.pip(ids[0]));assert 'packed' not in old and old['bytes']==len(original[ids[0]])

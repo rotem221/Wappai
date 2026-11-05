@@ -277,6 +277,15 @@ function event(e) {
       if ($("#jobs")) pips().catch(() => {});
       else refresh().catch(() => {});
       break;
+    case "settings.updated":
+      state.settings = { ...state.settings, ...e.settings };
+      document.querySelectorAll("[data-setting]").forEach((input) => {
+        const value = state.settings[input.dataset.setting];
+        if (value == null || input === document.activeElement) return;
+        if (input.type === "checkbox") input.checked = !!value;
+        else input.value = value;
+      });
+      break;
     case "session.deleted":
     case "session.active":
     case "pips.updated":

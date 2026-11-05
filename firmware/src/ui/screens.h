@@ -8,6 +8,7 @@
 
 namespace screens {
 
+constexpr int CLOCK_STYLES=6;
 enum Page { FACE = 0, CLOCK, TIMER, HOME, SETTINGS, NPAGES };
 
 // Button ids returned by hit()
@@ -15,6 +16,8 @@ enum : int {
     B_NONE = -1,
     B_TIMER_PRESET = 100,    // + minutes
     B_TIMER_ADD = 201, B_TIMER_CANCEL = 202,
+    B_TIMER_UP=220, B_TIMER_DOWN=223, B_TIMER_START=226,
+    B_CLOCK_PREV=240, B_CLOCK_NEXT=241, B_CLOCK_DONE=242,
     B_HA = 300,              // + index
     B_BRIGHT_DN = 401, B_BRIGHT_UP, B_VOL_DN, B_VOL_UP, B_WIFI, B_SCREEN_OFF,
     B_CARD_DEVICE = 500, B_CARD_CLOSE = 501, B_MEET_END = 510,
@@ -27,6 +30,7 @@ struct Snap {
     Model::Weather weather;
     // timer
     bool timerOn;
+    uint8_t pickHours=0,pickMinutes=5,pickSeconds=0,clockStyle=0;bool clockChooser=false;
     uint32_t timerLeft, timerTotal;
     char timerLabel[64];
     // home
@@ -53,6 +57,7 @@ void drawPage(LGFX_Sprite &s, int page, const Snap &d, uint32_t now, int haScrol
 void drawCard(LGFX_Sprite &s, const Snap &d, uint32_t now);
 // meeting transcription screen: title (once known), elapsed time, mic level, offline note, end button
 void drawMeeting(LGFX_Sprite &s, const char *title, uint32_t elapsedMs, float level, bool online, size_t bufferedBytes, uint32_t now, uint32_t limitSeconds=18000);
+void drawControlHUD(LGFX_Sprite &s,int kind,int percent);
 void drawToast(LGFX_Sprite &s, const char *text);
 void drawDots(LGFX_Sprite &s, int page);
 int hit(int x, int y);                           // button under (x, y) from the last drawn screen, or B_NONE

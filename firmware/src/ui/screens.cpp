@@ -1,4 +1,5 @@
 #include "screens.h"
+#include "theme.h"
 #include <WiFi.h>
 #include <string.h>
 #include <time.h>
@@ -12,8 +13,8 @@ namespace screens {
 
 static const int CX = SCREEN_W / 2, CY = SCREEN_H / 2;
 // RGB888 colours (uint32_t: LovyanGFX reads them as 24-bit)
-static const uint32_t C_TXT = 0xE6EEF2, C_MUTED = 0x8AA0AD, C_DIM = 0x4E5F69, C_ACC = 0x62F2DF, C_AMBER = 0xFFB13B,
-                      C_TILE = 0x14212A, C_TILE_HI = 0x24414D, C_BAD = 0xFF6A4D, C_SUN = 0xFFC94A, C_CLOUD = 0xC9D6DE,
+static const uint32_t C_TXT = uiTheme::text, C_MUTED = uiTheme::muted, C_DIM = 0x4E5F69, C_ACC = uiTheme::accent, C_AMBER = 0xFFB13B,
+                      C_TILE = uiTheme::surface, C_TILE_HI = uiTheme::raised, C_BAD = 0xFF6A4D, C_SUN = 0xFFC94A, C_CLOUD = 0xC9D6DE,
                       C_RAIN = 0x5DB7FF, C_ON = 0xFFC56B, C_ON_INK = 0x2A1A00;
 
 static lgfx::PointerWrapper wHe, w104, w52;
@@ -183,9 +184,15 @@ static void deviceIcon(LGFX_Sprite &s, int x, int y, float r, const char *kind, 
 
 // ---------------------------------------------------------------- shared pieces
 static void pill(LGFX_Sprite &s, int x, int y, int w, int h, uint32_t bg, const char *label, uint32_t fg, int id, float size = 0.85f) {
-    s.fillSmoothRoundRect(x, y, w, h, h / 2, isPressed(id) ? mix(bg, 0xFFFFFF, 0.25f) : bg);
+    uiTheme::button(s,x,y,w,h,min(h/2,22),isPressed(id)?mix(bg,0xFFFFFF,.16f):bg,isPressed(id));
     he(s, label, y + h / 2, fg, size, x + w / 2);
     addBtn(x, y, w, h, id);
+}
+
+static void symbolButton(LGFX_Sprite &s,int x,int y,int w,int h,int symbol,int id){
+    pill(s,x,y,w,h,C_TILE_HI,"",C_ACC,id);int cx=x+w/2,cy=y+h/2;
+    if(symbol==0 || symbol==1){s.drawWideLine(cx-9,cy,cx+9,cy,2.5f,C_ACC);if(symbol==1)s.drawWideLine(cx,cy-9,cx,cy+9,2.5f,C_ACC);}
+    else {int dir=symbol==2?-1:1;s.drawWideLine(cx-dir*4,cy-8,cx+dir*4,cy,2.5f,C_TXT);s.drawWideLine(cx+dir*4,cy,cx-dir*4,cy+8,2.5f,C_TXT);}
 }
 
 static void bigClock(LGFX_Sprite &s, int y) {
@@ -212,6 +219,19 @@ void drawToast(LGFX_Sprite &s, const char *text) {
     he(s, text, 404, 0xFFD2C8, 0.75f);
 }
 
+void drawControlHUD(LGFX_Sprite &s,int kind,int percent){
+    percent=constrain(percent,0,100);
+    uiTheme::button(s,105,168,256,128,26,uiTheme::surface);
+    he(s,kind==2?"בהירות":"עוצמת קול",192,C_MUTED,.65f);
+    char value[12];snprintf(value,sizeof value,"%d%%",percent);num(s,value,247,229,C_TXT,false,.75f);
+    if(kind==2)sun(s,151,229,19,C_ACC);
+    else {s.fillRect(137,222,8,15,C_ACC);s.fillTriangle(145,222,156,214,156,245,C_ACC);
+        if(percent)s.drawArc(155,229,18,16,-45,45,C_ACC);else{s.drawLine(165,222,176,236,C_MUTED);s.drawLine(165,236,176,222,C_MUTED);}}
+    s.fillSmoothRoundRect(133,269,200,8,4,uiTheme::raised);
+    if(percent)s.fillSmoothRoundRect(133,269,max(8,percent*2),8,4,C_ACC);
+    useText(s);
+}
+
 // ---------------------------------------------------------------- pages
 static void weatherRow(LGFX_Sprite &s, const Model::Weather &w, int y) {
     if (!w.ok) { he(s, "אין עדיין נתוני מזג אוויר", y, C_DIM, 0.75f); return; }
@@ -224,11 +244,61 @@ static void weatherRow(LGFX_Sprite &s, const Model::Weather &w, int y) {
     he(s, line, y + 54, C_MUTED, 0.75f);
 }
 
+// Original vector faces: broad numerals, restrained baton markers and dark AMOLED dials.
+// Draw once per second; no textures, external assets or constantly ticking animation task.
+static void clockHands(LGFX_Sprite &s,const tm &lt,bool valid,float hourLen,float minuteLen,uint32_t ink,uint32_t accent){
+    if(!valid)return;
+    float h=(lt.tm_hour%12+lt.tm_min/60.f)*PI/6-PI/2,m=(lt.tm_min+lt.tm_sec/60.f)*PI/30-PI/2,sec=lt.tm_sec*PI/30-PI/2;
+    s.drawWideLine(CX+2,CY+3,CX+cosf(h)*hourLen+2,CY+sinf(h)*hourLen+3,12,(uint32_t)0);
+    s.drawWideLine(CX,CY,CX+cosf(h)*hourLen,CY+sinf(h)*hourLen,10,ink);
+    s.drawWideLine(CX,CY,CX+cosf(m)*minuteLen,CY+sinf(m)*minuteLen,6,ink);
+    s.drawWideLine(CX-cosf(sec)*22,CY-sinf(sec)*22,CX+cosf(sec)*170,CY+sinf(sec)*170,2,accent);
+    s.fillSmoothCircle(CX,CY,9,ink);s.fillSmoothCircle(CX,CY,4,accent);
+}
+static void chapter(LGFX_Sprite &s,int radius,uint32_t ink,bool batons){
+    for(int i=0;i<60;i++){
+        float a=i*PI/30-PI/2;int len=i%5?5:batons?23:12;
+        s.drawWideLine(CX+cosf(a)*(radius-len),CY+sinf(a)*(radius-len),CX+cosf(a)*radius,CY+sinf(a)*radius,i%5?1:batons?6:3,i%5?mix(0,ink,.45f):ink);
+    }
+}
 static void pageClock(LGFX_Sprite &s, const Snap &d) {
-    he(s, d.date[0] ? d.date : "", 112, C_MUTED, 0.85f);
-    bigClock(s, 196);
-    weatherRow(s, d.weather, 300);
-    if (d.weather.ok && d.weather.city[0]) he(s, d.weather.city, 392, C_DIM, 0.65f);
+    time_t t=time(nullptr);tm lt{};localtime_r(&t,&lt);bool valid=t>1700000000;
+    char hour[4]="--",minute[4]="--",date[16]="";
+    if(valid){snprintf(hour,sizeof hour,"%02d",lt.tm_hour);snprintf(minute,sizeof minute,"%02d",lt.tm_min);snprintf(date,sizeof date,"%02d / %02d",lt.tm_mday,lt.tm_mon+1);}
+    if(d.clockStyle==0){
+        s.drawArc(CX,CY,220,218,205,335,(uint32_t)0x24434B);
+        he(s,d.date,100,C_MUTED,.85f);bigClock(s,200);weatherRow(s,d.weather,315);
+    }else if(d.clockStyle==1 || d.clockStyle==4){
+        bool emerald=d.clockStyle==1;uint32_t ink=emerald?0xD9C79A:0xDBEAF1,accent=emerald?0x9CDFC1:0xFF884D;
+        s.fillCircle(CX,CY,231,emerald?(uint32_t)0x18352E:(uint32_t)0x172935);
+        s.fillCircle(CX,CY,223,emerald?(uint32_t)0x071D17:(uint32_t)0x07101D);
+        s.drawCircle(CX,CY,226,mix(ink,0,.5f));chapter(s,207,ink,emerald);
+        if(!emerald){num(s,"12",CX,78,ink,false,.8f);num(s,"6",CX,390,ink,false,.8f);num(s,"9",76,CY,ink,false,.8f);}
+        he(s,"WAPPAI",147,ink,.65f);he(s,emerald?"קלאסי":"ספורט",310,mix(0,ink,.6f),.6f);
+        s.fillRoundRect(331,217,48,34,6,(uint32_t)0xCAD9CE);
+        char day[4]="--";if(valid)snprintf(day,sizeof day,"%02d",lt.tm_mday);num(s,day,355,235,0x13251E,false,.45f);
+        clockHands(s,lt,valid,96,151,ink,accent);
+    }else if(d.clockStyle==2){
+        s.drawArc(CX,CY,226,221,200,340,(uint32_t)0x493860);
+        num(s,hour,CX,145,0xDBB9FF,true,1.65f);num(s,minute,CX,309,0x8764C5,true,1.65f);
+        he(s,date,414,C_MUTED,.65f);
+    }else if(d.clockStyle==3){
+        uint32_t ink=0xFFAA68;s.fillCircle(CX,CY,231,(uint32_t)0x211008);
+        num(s,"12",CX,65,ink,true,.90f);num(s,"3",405,CY,ink,true,.90f);
+        num(s,"6",CX,402,ink,true,.90f);num(s,"9",61,CY,ink,true,.90f);
+        he(s,date,304,0xA97955,.6f);clockHands(s,lt,valid,91,140,0xFFF2D9,0xFF7547);
+    }else{
+        chapter(s,218,0x667E90,false);char hm[8];snprintf(hm,sizeof hm,"%s:%s",hour,minute);
+        num(s,hm,CX,CY,0xE1F6FF,true,1.2f);he(s,d.date,139,C_MUTED,.8f);he(s,"WAPPAI",333,0x648393,.65f);
+    }
+    if(d.clockChooser){
+        const char *names[]={"שעה ומזג אוויר","אמרלד קלאסי","ספרות גדולות","ספרות היקפיות","ספורט כחול","חצות"};
+        uiTheme::button(s,84,326,298,109,28,uiTheme::surface);
+        he(s,names[d.clockStyle%CLOCK_STYLES],347,C_TXT,.7f);
+        symbolButton(s,99,375,64,48,2,B_CLOCK_PREV);
+        pill(s,174,375,118,48,C_TILE_HI,"בחירה",C_ACC,B_CLOCK_DONE);
+        symbolButton(s,303,375,64,48,3,B_CLOCK_NEXT);
+    }
 }
 
 static const int PRESETS[6] = {1, 3, 5, 10, 15, 30};
@@ -247,20 +317,19 @@ static void timerRunning(LGFX_Sprite &s, const Snap &d, bool buttons) {
 static void pageTimer(LGFX_Sprite &s, const Snap &d) {
     if (d.timerOn) { timerRunning(s, d, true); return; }
     title(s, "טיימר");
-    const int W = 104, H = 70, G = 12;
-    int x0 = CX - (3 * W + 2 * G) / 2, y0 = 140;
-    for (int i = 0; i < 6; i++) {
-        int c = 2 - i % 3, r = i / 3;            // right to left
-        int x = x0 + c * (W + G), y = y0 + r * (H + G);
-        int id = B_TIMER_PRESET + PRESETS[i];
-        s.fillSmoothRoundRect(x, y, W, H, 18, isPressed(id) ? C_TILE_HI : C_TILE);
-        char n[4];
-        snprintf(n, sizeof n, "%d", PRESETS[i]);
-        num(s, n, x + W / 2, y + H / 2 - 9, C_TXT, false, 0.7f);
-        he(s, "דקות", y + H / 2 + 20, C_MUTED, 0.55f, x + W / 2);
-        addBtn(x, y, W, H, id);
+    const int values[]={d.pickHours,d.pickMinutes,d.pickSeconds};
+    const char *labels[]={"שעות","דקות","שניות"};
+    for(int i=0;i<3;i++){
+        int x=141+i*92;
+        symbolButton(s,x-32,135,64,44,1,B_TIMER_UP+i);
+        uiTheme::button(s,x-42,192,84,86,22,C_TILE);
+        char n[4];snprintf(n,sizeof n,"%02d",values[i]);num(s,n,x,224,C_TXT,false,.85f);
+        he(s,labels[i],261,C_MUTED,.55f,x);
+        symbolButton(s,x-32,291,64,44,0,B_TIMER_DOWN+i);
     }
-    he(s, "או פשוט לבקש: \"טיימר לעשר דקות\"", 336, C_DIM, 0.62f);
+    bool ready=d.pickHours || d.pickMinutes || d.pickSeconds;
+    pill(s,153,357,160,54,ready?C_TILE_HI:C_TILE,"התחלה",ready?C_ACC:C_DIM,ready?B_TIMER_START:B_NONE);
+
 }
 
 static void pageHome(LGFX_Sprite &s, const Snap &d, int scroll) {
@@ -282,7 +351,7 @@ static void pageHome(LGFX_Sprite &s, const Snap &d, int scroll) {
         bool on = it.on && it.avail;
         uint32_t bg = !it.avail ? (uint32_t)0x111417 : on ? (uint32_t)0x4A3610 : C_TILE;
         if (isPressed(B_HA + i)) bg = mix(bg, 0xFFFFFF, 0.2f);
-        s.fillSmoothRoundRect(x, y, W, H, 20, bg);
+        uiTheme::button(s,x,y,W,H,20,bg,isPressed(B_HA+i));
         deviceIcon(s, x + W - 28, y + H / 2, 17, it.kind, on ? C_ON : C_MUTED);
         // name (right aligned next to the icon) and state
         he(s, fit(s, it.name, W - 56, 0.62f), y + 26, it.avail ? C_TXT : C_DIM, 0.62f, x + (W - 46) / 2 + 4);
@@ -315,13 +384,11 @@ static void stepper(LGFX_Sprite &s, int y, const char *label, float v, int idDn,
 
 static void pageSettings(LGFX_Sprite &s, const Snap &d) {
     title(s, "הגדרות");
-    stepper(s, 158, "בהירות", (d.brightness - 20) / 235.f, B_BRIGHT_DN, B_BRIGHT_UP);
-    stepper(s, 250, "עוצמת קול", d.volume / 100.f, B_VOL_DN, B_VOL_UP);
-    pill(s, CX + 8, 316, 128, 50, C_TILE, "Wi-Fi", C_TXT, B_WIFI);
-    pill(s, CX - 136, 316, 128, 50, C_TILE, "כיבוי מסך", C_TXT, B_SCREEN_OFF);
-    char info[64];
-    snprintf(info, sizeof info, "Piko %s · %s", FW_VERSION, d.wifi ? d.ip : "ללא רשת");
-    he(s, info, 398, C_DIM, 0.55f);
+    pill(s,113,156,240,66,C_TILE,"רשת Wi-Fi",C_TXT,B_WIFI);
+    pill(s,113,242,240,66,C_TILE,"כיבוי מסך",C_TXT,B_SCREEN_OFF);
+    he(s,"החלקה בצד ימין — בהירות",350,C_MUTED,.65f);
+    he(s,"החלקה בצד שמאל — עוצמה",382,C_MUTED,.65f);
+
 }
 
 void drawPage(LGFX_Sprite &s, int page, const Snap &d, uint32_t now, int haScroll) {
@@ -335,7 +402,7 @@ void drawPage(LGFX_Sprite &s, int page, const Snap &d, uint32_t now, int haScrol
         case SETTINGS: pageSettings(s, d); break;
         default: break;
     }
-    drawDots(s, page);
+    if(page!=CLOCK)drawDots(s, page);
     useText(s);
 }
 

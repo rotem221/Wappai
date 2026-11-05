@@ -1,6 +1,7 @@
 #include "pip_storage.h"
 #include "shake_detector.h"
 #include "power_policy.h"
+#include "round_controls.h"
 // The creature's "body": input (buttons, touch, IMU), power states, timers and drawing.
 // Runs on core 1 from loop(); the network task (core 0) talks to it through `model`.
 #include "app.h"
@@ -20,6 +21,7 @@
 #include "net/net.h"
 #include "ui/ring.h"
 #include "ui/screens.h"
+#include "ui/page_slide.h"
 #include "ui/text_he.h"
 
 static LGFX lcd;
@@ -45,14 +47,32 @@ static int rssiCache = 0;
 static bool bootDown = false, recording = false, touchPtt = false;
 static bool gallery = false, galleryHold = false;
 static uint8_t galleryPip = 0;
-static int pipCount(){return PIXEL_RIG_COUNT+(model.customPip?1:0);}
-static const char *pipName(int i){return i==PIXEL_RIG_COUNT && model.customPip?model.customPip->name:PIXEL_RIG_NAMES[i];}
+static PipEntry pipEntries[29];
+static unsigned customCount=0;
+static int pipCount(){return PIXEL_RIG_COUNT+customCount;}
+static const char *pipName(int i){return i>=PIXEL_RIG_COUNT && i<pipCount()?pipEntries[i-PIXEL_RIG_COUNT].name:PIXEL_RIG_NAMES[i%PIXEL_RIG_COUNT];}
+static const char *pipId(int i){return i>=PIXEL_RIG_COUNT && i<pipCount()?pipEntries[i-PIXEL_RIG_COUNT].pip:i==0?"pip":i==1?"nori":"orbit";}
+static int pipIndex(const char *id){for(unsigned i=0;i<customCount;i++)if(!strcmp(pipEntries[i].pip,id))return PIXEL_RIG_COUNT+i;return 0;}
+// UI thread owns the decoded atlas; network requests hand over a pending asset.
+static bool showPip(int i,uint32_t color=0){
+    if(i>=PIXEL_RIG_COUNT){
+        if(i>=pipCount())return false;
+        const auto &entry=pipEntries[i-PIXEL_RIG_COUNT];
+        if(!model.customPip || strcmp(model.customPip->asset,entry.asset)){
+            auto *next=pipLoad(entry.path);if(!next)return false;
+            modelLock();auto *old=model.customPip;model.customPip=next;face.setAsset(next);modelUnlock();delete old;
+        }
+    }
+    face.setPip(i>=PIXEL_RIG_COUNT?PIXEL_RIG_COUNT:i,color);return true;
+}
 static bool meeting = false;                 // continuous recording for transcription
 static uint32_t meetingT0 = 0, lastBootTap = 0;
 static uint32_t bootT0 = 0, recT0 = 0;
 static bool touchDown = false;
 static int tx0 = 0, ty0 = 0, tx = 0, ty = 0;
 static uint32_t touchT0 = 0;
+static int touchSim=-1,touchSimX=0,touchSimY=0;
+static bool readTouch(lgfx::touch_point_t &tp){if(touchSim<0)return lcd.getTouch(&tp);tp.x=touchSimX;tp.y=touchSimY;return touchSim==1;}
 static bool pwrDown = false;
 static WifiSetup wsetup;
 static volatile int bootSimReq = -2;               // on-device Wi-Fi setup screen (no Wi-Fi, or PWR held 2 s)
@@ -60,6 +80,17 @@ static volatile int bootSimReq = -2;               // on-device Wi-Fi setup scre
 // side pages (swipe: clock, timer, home, settings) and cards the server shows (time, weather, camera...)
 using namespace screens;
 static int page = FACE;
+static uint16_t *slidePrevious=nullptr;
+static constexpr uint32_t SLIDE_MS=180;
+static uint32_t slideStarted=0,slideFrames=0,slideFlushUs=0;static int slideDirection=1;
+static void stopSlide(){if(slidePrevious)Serial.printf("slide: frames=%u elapsed_ms=%u flush_us_avg=%u\n",slideFrames,millis()-slideStarted,slideFrames?slideFlushUs/slideFrames:0);free(slidePrevious);slidePrevious=nullptr;}
+static bool slideRunning(uint32_t now){return slidePrevious && (uint32_t)(now-slideStarted)<SLIDE_MS;}
+static void flushPage(uint32_t now){
+    if(slidePrevious && !slideRunning(now))stopSlide();
+    int remaining=slidePrevious?slideDirection*(int)(SCREEN_W*(1-slideEase((now-slideStarted)/(float)SLIDE_MS))):0;
+    uint32_t started=micros();lcd.flush(scr,0,0,SCREEN_W,SCREEN_H,false,slidePrevious,remaining);
+    if(slidePrevious){++slideFrames;slideFlushUs+=micros()-started;}
+}
 static uint32_t pageActiveT = 0;               // last touch on a page: back to the face after a minute
 static bool cardOn = false;
 static uint32_t cardUntil = 0, cardImgBase = 0, drawnImg = 0;
@@ -75,6 +106,15 @@ static uint32_t seenInfo = 0, seenHa = 0, seenImg = 0;
 static char toast[96] = "";
 static uint32_t toastUntil = 0;
 static Preferences uiPrefs;
+static roundControls::EdgeSwipe edgeSwipe;
+static roundControls::TimerPicker timerPicker;
+static uint8_t clockStyle=0;static bool clockChooser=false,clockHold=false;
+static int hudKind=0,hudValue=0;static uint32_t hudUntil=0;
+static const Rect HUD_RECT={103,166,363,300};
+static bool hudOn(uint32_t now){return hudKind && (int32_t)(hudUntil-now)>0;}
+static void showControl(int kind,int value,uint32_t now){hudKind=kind;hudValue=value;hudUntil=now+1400;screenDirty=true;drawnImg=0;}
+static void controlOverlay(uint32_t now){if(hudOn(now))drawControlHUD(scr,hudKind,hudValue);}
+
 
 // presentation
 static char sub[320] = "";
@@ -145,8 +185,12 @@ static void wake(bool user = false) {
 }
 
 static void showFace();
+static void finishEdge(uint32_t now,bool feedback=true);
 
 static void screenOff(uint32_t now) {
+    if(edgeSwipe.active)finishEdge(now,false);
+    touchDown=false;
+    stopSlide();
     // Setup bypasses the normal face renderer: clear its pixels on next wake.
     if(wsetup.active()){wsetup.close();faceNeedsClear=true;}
     if (power == P_OFF) return;
@@ -165,12 +209,18 @@ static uint16_t cardTtlS = 12;
 static bool cardHeld() { return cardOn && (audioPlaying() || recording); }
 static bool onScreens() { return meeting || (cardOn && !cardHeld()) || page != FACE; }
 
-static void setPage(int p) {
+static void setPage(int p,bool animate=false) {
+    int direction=p>page?1:-1;
     if (meeting) return;                                   // the meeting screen stays until it ends
     p = (p + NPAGES) % NPAGES;
     if (p == page && !cardOn) return;
+    stopSlide();
+    if(animate && power==P_ACTIVE && !model.reducedMotion && !recording && !meeting && !audioPlaying() && !model.assetBusy){
+        slidePrevious=(uint16_t*)ps_malloc(SCREEN_W*SCREEN_H*2);
+        if(slidePrevious){memcpy(slidePrevious,scr.getBuffer(),SCREEN_W*SCREEN_H*2);slideStarted=millis();slideFrames=slideFlushUs=0;slideDirection=direction;}
+    }
     if (p == FACE) faceNeedsClear = true;
-    page = p;
+    page = p;clockChooser=false;
     cardOn = false;
     screenDirty = true;
     haScroll = 0;
@@ -301,8 +351,41 @@ static void sendSetting(const char *key, int v) {
     netSend(m);
 }
 
+static void updateEdge(uint32_t now){
+    stopSlide();
+    modelLock();model.localControl=(uint8_t)edgeSwipe.kind;modelUnlock();
+    if(edgeSwipe.kind==roundControls::EdgeSwipe::BRIGHTNESS){modelLock();model.brightness=edgeSwipe.value;modelUnlock();setBrightness(activeBrightness());}
+    else {modelLock();model.volume=edgeSwipe.value;modelUnlock();audioSetVolume(edgeSwipe.value);}
+    showControl((int)edgeSwipe.kind,edgeSwipe.kind==roundControls::EdgeSwipe::BRIGHTNESS?(activeBrightness()*100+127)/255:edgeSwipe.value,now);
+    markActivity();pageActiveT=now;
+}
+static void finishEdge(uint32_t now,bool feedback){
+    if(edgeSwipe.active){
+        bool brightness=edgeSwipe.kind==roundControls::EdgeSwipe::BRIGHTNESS;
+        if(edgeSwipe.value!=edgeSwipe.initial){
+            uiPrefs.putUChar(brightness?"bright":"vol",edgeSwipe.value);
+            sendSetting(brightness?"brightness":"volume",edgeSwipe.value);
+        }
+        // Never replace ongoing speech or captured audio with a UI sound; mute stays mute.
+        if(feedback && !brightness && edgeSwipe.value>0 && !recording && !meeting && !audioPlaying() && !alarmOn)audioBeep();
+        showControl((int)edgeSwipe.kind,brightness?(activeBrightness()*100+127)/255:edgeSwipe.value,now);
+    }edgeSwipe.reset();modelLock();model.localControl=0;modelUnlock();
+}
+static void startTimer(uint32_t seconds,uint32_t now){
+    if(!seconds || seconds>86400)return;
+    modelLock();model.timerOn=true;model.timerTotal=seconds*1000;model.timerEnd=now+seconds*1000;model.timerLabel[0]=0;modelUnlock();
+    char m[96];snprintf(m,sizeof m,"{\"type\":\"event\",\"name\":\"timer_set\",\"seconds\":%u}",(unsigned)seconds);netSend(m);
+    Preferences saved;saved.begin("wappai-timers",false);saved.putBool("active",true);saved.putUInt("total",seconds);saved.putULong64("deadline",(uint64_t)time(nullptr)+seconds);saved.putString("label","");saved.end();
+    if(!audioPlaying() && !recording && !meeting)audioBeep();screenDirty=true;
+}
+
 static void doButton(int id, uint32_t now) {
-    if (id >= B_TIMER_PRESET && id < B_TIMER_PRESET + 100) {
+    if(id>=B_TIMER_UP && id<B_TIMER_UP+3){timerPicker.change(id-B_TIMER_UP,1);}
+    else if(id>=B_TIMER_DOWN && id<B_TIMER_DOWN+3){timerPicker.change(id-B_TIMER_DOWN,-1);}
+    else if(id==B_TIMER_START){startTimer(timerPicker.total(),now);}
+    else if(id==B_CLOCK_PREV || id==B_CLOCK_NEXT){clockStyle=(clockStyle+(id==B_CLOCK_NEXT?1:CLOCK_STYLES-1))%CLOCK_STYLES;uiPrefs.putUChar("clockStyle",clockStyle);}
+    else if(id==B_CLOCK_DONE){clockChooser=false;}
+    else if (id >= B_TIMER_PRESET && id < B_TIMER_PRESET + 100) {
         uint32_t ms = (id - B_TIMER_PRESET) * 60000UL;
         modelLock();
         model.timerOn = true; model.timerTotal = ms; model.timerEnd = now + ms; model.timerLabel[0] = 0;
@@ -359,6 +442,9 @@ static void screenTap(int dx, int dy, uint32_t now) {
         screenDirty = true;
         return;
     }
+    if(page==TIMER && !cardOn && !model.timerOn && abs(dy)>=24 && abs(dy)>abs(dx)*1.4f && ty0>=130 && ty0<=310 && tx0>=95 && tx0<=371){
+        timerPicker.change(constrain((tx0-95)/92,0,2),-dy/24);screenDirty=true;return;
+    }
     if (abs(dx) > 25 || abs(dy) > 25) return;
     int id = hit(tx, ty);
     if (cardOn) {
@@ -401,7 +487,7 @@ static void pollInputs(uint32_t now) {
         bootDown = false;
         if (bootUnlockConsumed) {bootUnlockConsumed=false;}
         else if (provisioningConfirm(true)) { faceNeedsClear = true; }
-        else if (gallery) { gallery = false; faceNeedsClear = true; face.setPip(model.pip, model.pipColor); }
+        else if (gallery) { gallery = false; faceNeedsClear = true; showPip(model.pip, model.pipColor); }
         else if (meeting) stopMeeting();
         else if (model.holdToTalk) { if (recording) stopRecording(); else if (!bootHoldStarted) bootTap(); }
         else if (recording) stopRecording();
@@ -418,7 +504,7 @@ static void pollInputs(uint32_t now) {
 
     // touch
     lgfx::touch_point_t tp;
-    bool t = lcd.getTouch(&tp);
+    bool t = readTouch(tp);
     // Locked while the screen is off or the device is in a pocket: touches can't wake it or start anything.
     // (An ongoing touch push-to-talk keeps working until the finger lifts.)
     if ((manualLocked || power == P_OFF || pocket) && !touchPtt) { t = false; touchDown = false; }
@@ -428,28 +514,36 @@ static void pollInputs(uint32_t now) {
         if (!touchLost) touchLost = now;
         if (now - touchLost < 200) { t = true; tp.x = tx; tp.y = ty; }
     } else touchLost = 0;
-    if (t && !touchDown) { touchDown = true; touchT0 = now; tx0 = tx = tp.x; ty0 = ty = tp.y; wake(true); }
+    if (t && !touchDown) { touchDown = true; touchT0 = now; tx0 = tx = tp.x; ty0 = ty = tp.y; clockHold=false;edgeSwipe.begin(tx,ty,model.brightness,model.volume);wake(true); }
     if (t) { tx = tp.x; ty = tp.y; }
-    if (touchDown && t && !recording && !meeting && page == FACE && since(now, touchT0) > TOUCH_PTT_MS && abs(tx - tx0) < 30 && abs(ty - ty0) < 30) {
+    if(touchDown && t && !touchPtt && edgeSwipe.move(tx,ty))updateEdge(now);
+    if(touchDown && t && !edgeSwipe.active && !recording && !meeting && !gallery && !clockHold && since(now,touchT0)>650 && abs(tx-tx0)<20 && abs(ty-ty0)<20 &&
+       ((page==CLOCK && !cardOn) || (page==FACE && !cardOn && tx0>180 && tx0<286 && ty0<90) || (cardOn && !strcmp(model.cardKind,"time")))){
+        setPage(CLOCK);clockChooser=true;clockHold=true;screenDirty=true;
+    }
+    if (touchDown && t && !edgeSwipe.active && !clockHold && !model.assetBusy && !recording && !meeting && page == FACE && since(now, touchT0) > TOUCH_PTT_MS && abs(tx - tx0) < 30 && abs(ty - ty0) < 30) {
         if (!galleryHold) { gallery = true; galleryHold = true; galleryPip = model.pip; faceNeedsClear = true; }
     }
     if (touchDown && !t) {
         touchDown = false;
         int dx = tx - tx0, dy = ty - ty0;
-        if (gallery) {
-            if (abs(dx) > 55) { galleryPip = (galleryPip + (dx > 0 ? 1 : pipCount()-1)) % pipCount(); face.setPip(galleryPip); faceNeedsClear = true; }
+        if(edgeSwipe.active){finishEdge(now);}
+        else if(clockHold){clockHold=false;}
+        else if (gallery && model.assetBusy){galleryHold=false;}
+        else if (gallery) {
+            if (abs(dx) > 55) { galleryPip = (galleryPip + (dx > 0 ? 1 : pipCount()-1)) % pipCount(); if(!showPip(galleryPip))strlcpy(toast,"לא ניתן לטעון את הדמות",sizeof toast); faceNeedsClear = true; }
             else if (!galleryHold && abs(dx) < 20 && abs(dy) < 20) {
                 model.pip = galleryPip; model.pipColor = 0;
                 uiPrefs.putUChar("pip", model.pip); uiPrefs.putUInt("pipColor",0);
-                face.setPip(model.pip); gallery = false; faceNeedsClear = true;
-                netSend(String("{\"type\":\"pip.selected\",\"pip\":") + model.pip + ",\"pip_id\":\"" + (model.pip==PIXEL_RIG_COUNT && model.customPip?model.customPip->pip: model.pip==0?"pip":model.pip==1?"nori":"orbit") + "\"}");
+                showPip(model.pip); uiPrefs.putString("pipId",pipId(model.pip)); gallery = false; faceNeedsClear = true;
+                netSend(String("{\"type\":\"pip.selected\",\"pip\":") + model.pip + ",\"pip_id\":\"" + pipId(model.pip) + "\"}");
             }
             galleryHold = false;
         }
         else if (touchPtt) { touchPtt = false; stopRecording(); }
         else if (alarmOn) { alarmOn = false; audioStop(); }
         else if (abs(dx) > 70 && abs(dx) > abs(dy) * 1.4f) {    // side swipe: next / previous page (round robin)
-            setPage(page + (dx > 0 ? 1 : -1));
+            setPage(page + (dx > 0 ? 1 : -1),true);
             Serial.printf("page: %d\n", page);
         }
         else if (onScreens()) screenTap(dx, dy, now);
@@ -466,6 +560,8 @@ static void pollInputs(uint32_t now) {
             netSend(m);
         }
     }
+
+    if(!touchDown)edgeSwipe.reset();
 
     // PWR key (through the expander): short press toggles the screen
     static uint32_t lastPwrPoll = 0;
@@ -532,27 +628,34 @@ static void applyModel(uint32_t now) {
     char pipCue[12]="none",expressionAck[33]="";bool expressionApplied=false;
     bool wakeReq = false;
     modelLock();
+    char selectedPip[33];strlcpy(selectedPip,pipId(model.pip),sizeof selectedPip);
     if(model.assetSwap || model.assetRemove){
         PipAsset *old=model.customPip;model.customPip=model.assetRemove?nullptr:model.pendingPip;model.pendingPip=nullptr;
         face.setAsset(model.customPip);delete old;
-        if(!model.assetRemove){model.pip=PIXEL_RIG_COUNT;model.pipColor=0;}
-        else if(model.pip>=PIXEL_RIG_COUNT){model.pip=0;model.pipColor=0;}
+        if(!model.assetRemove){strlcpy(selectedPip,model.customPip->pip,sizeof selectedPip);model.pipColor=0;}
+        else if(model.pip>=PIXEL_RIG_COUNT){strlcpy(selectedPip,"pip",sizeof selectedPip);model.pip=0;model.pipColor=0;}
         model.assetSwap=model.assetRemove=false;model.pipNew=true;gallery=false;wakeReq=true;
     }
     char pipAck[33]="";
+    if(model.catalogNew){
+        model.catalogNew=false;customCount=pipScan(pipEntries,29);
+        model.pip=!strcmp(selectedPip,"nori")?1:!strcmp(selectedPip,"orbit")?2:pipIndex(selectedPip);
+        strlcpy(pipAck,model.pipCommand,sizeof pipAck);model.pipCommand[0]=0;model.assetBusy=false;
+        gallery=false;faceNeedsClear=true;model.pipNew=true;
+    }
     if (model.pipNew) {
-        strlcpy(pipAck,model.pipCommand,sizeof pipAck);model.pipCommand[0]=0;if(pipAck[0])model.assetBusy=false;
+        if(model.pipCommand[0])strlcpy(pipAck,model.pipCommand,sizeof pipAck);model.pipCommand[0]=0;if(pipAck[0])model.assetBusy=false;
         model.pipNew = false; model.pip = model.pip % pipCount();
-        face.setPip(model.pip, model.pipColor); face.setReducedMotion(model.reducedMotion);
-        uiPrefs.putUChar("pip", model.pip); uiPrefs.putUInt("pipColor", model.pipColor);
+        modelUnlock();showPip(model.pip,model.pipColor);modelLock();face.setReducedMotion(model.reducedMotion);
+        uiPrefs.putUChar("pip", model.pip); uiPrefs.putUInt("pipColor", model.pipColor);uiPrefs.putString("pipId",pipId(model.pip));
         faceNeedsClear = true;
     }
     if(model.expressionNew) {
         model.expressionNew=false;
         strlcpy(expressionAck,model.expressionId,sizeof expressionAck);
         if(!recording && !audioPlaying() && !meeting && !alarmOn) {
-            model.pip=model.expressionRig;model.pipColor=model.expressionColor;model.pipNew=true;
-            face.setPip(model.pip,model.pipColor);face.setExpression(model.expression);showFace();
+            model.pip=model.expressionRig==PIXEL_RIG_COUNT && model.pip>=PIXEL_RIG_COUNT?model.pip:model.expressionRig;model.pipColor=model.expressionColor;model.pipNew=true;
+            face.setPip(model.pip>=PIXEL_RIG_COUNT?PIXEL_RIG_COUNT:model.pip,model.pipColor);face.setExpression(model.expression);showFace();
             emotionHoldUntil=now+10000;wakeReq=true;expressionApplied=true;strlcpy(pipCue,model.cue,sizeof pipCue);
         }
     }
@@ -565,10 +668,10 @@ static void applyModel(uint32_t now) {
     if(model.clearCard){model.clearCard=false;cardOn=false;page=FACE;faceNeedsClear=true;badgeUntil=0;}
     if(model.partialNew){model.partialNew=false;strlcpy(livePartial,model.liveTranscription && recording?model.partial:"",sizeof livePartial);}
     if(model.badgeNew){model.badgeNew=false;deviceBadge=model.badge;badgePending=model.badgePending;badgeUntil=now+model.badgeTtl*1000UL;}
-    bool cardReq = false, cfgReq = false, toastReq = false;
+    bool cardReq = false, cfgReq = false, toastReq = false;char configAck[33]="";
     uint16_t cardTtl = 12;
     if (model.cardNew) { model.cardNew = false; cardReq = true; cardTtl = model.cardTtl; cardImgBase = model.imgSeq; }
-    if (model.configNew) { model.configNew = false; cfgReq = true; }
+    if (model.configNew) { model.configNew = false; cfgReq = true;strlcpy(configAck,model.configCommand,33);model.configCommand[0]=0; }
     if (model.toastNew) { model.toastNew = false; toastReq = true; strlcpy(toast, model.toast, sizeof toast); }
     if (model.infoSeq != seenInfo) { seenInfo = model.infoSeq; screenDirty = true; }
     if (model.haSeq != seenHa) { seenHa = model.haSeq; haListChanged(); screenDirty = true; }
@@ -618,6 +721,11 @@ static void applyModel(uint32_t now) {
         screenDirty = true;
     }
     if (cfgReq) {
+        if(!edgeSwipe.active){
+            int oldB=uiPrefs.getUChar("bright",model.brightness),oldV=uiPrefs.getUChar("vol",model.volume);
+            if(oldB!=model.brightness)showControl(2,(activeBrightness()*100+127)/255,now);
+            else if(oldV!=model.volume)showControl(1,model.volume,now);
+        }
         uiPrefs.putBool("pipSounds",model.characterSounds);
         uiPrefs.putBool("shake",model.shakeReaction);
         uiPrefs.putBool("liveText",model.liveTranscription);if(!model.liveTranscription)livePartial[0]=0;
@@ -628,6 +736,7 @@ static void applyModel(uint32_t now) {
         uiPrefs.putBool("hold",model.holdToTalk);uiPrefs.putBool("reduced",model.reducedMotion);
         uiPrefs.putUInt("dim",model.dimMs);uiPrefs.putUInt("deep",model.deepMs);
         screenDirty = true;
+        if(configAck[0])netSend(String("{\"type\":\"command.result\",\"id\":\"")+configAck+"\",\"status\":\"applied\",\"effective_brightness\":"+activeBrightness()+"}");
     }
     if (toastReq) {
         if (onScreens()) { toastUntil = now + 3500; screenDirty = true; }
@@ -833,7 +942,7 @@ static void snapshot(Snap &d, uint32_t now) {
     modelLock();
     strlcpy(d.date, model.date, sizeof d.date);
     d.weather = model.weather;
-    d.timerOn = model.timerOn;
+    d.timerOn = model.timerOn;d.pickHours=timerPicker.hours;d.pickMinutes=timerPicker.minutes;d.pickSeconds=timerPicker.seconds;d.clockStyle=clockStyle;d.clockChooser=clockChooser;
     int32_t left = (int32_t)(model.timerEnd - now);
     d.timerLeft = left > 0 ? left : 0;
     d.timerTotal = model.timerTotal;
@@ -862,16 +971,17 @@ static void renderScreens(uint32_t now) {
     static int lastPage = -1;
     static bool lastCard = false, lastToast = false;
     static uint32_t lastDraw = 0, pressT = 0;
+    static bool lastHud=false;
     static Snap d;
     snapshot(d, now);
     bool timerShown = d.timerOn && ((page == TIMER && !cardOn) || (cardOn && !strcmp(d.cardKind, "timer")));
     bool toastOn = (int32_t)(toastUntil - now) > 0;
-    bool need = screenDirty || page != lastPage || cardOn != lastCard || toastOn != lastToast ||
-                since(now, lastDraw) >= (timerShown ? 250u : 1000u) || since(now, pressT) < 400;
+    bool need = screenDirty || hudOn(now) || lastHud!=hudOn(now) || page != lastPage || cardOn != lastCard || toastOn != lastToast ||
+                since(now, lastDraw) >= (timerShown ? 250u : 1000u) || (!slidePrevious && since(now, pressT) < 400);
     if (screenDirty) pressT = now;
     if (meeting) {
         static uint32_t lastM = 0;
-        need = screenDirty || since(now, lastM) >= 200;
+        need = screenDirty || hudOn(now) || lastHud!=hudOn(now) || since(now, lastM) >= 200;
         if (need) {
             char title[96];
             modelLock(); strlcpy(title, model.meetingTitle, sizeof title); modelUnlock();
@@ -881,7 +991,7 @@ static void renderScreens(uint32_t now) {
     } else if (need) {
         if (cardOn && !strcmp(d.cardKind, "image") && d.imgReady) {
             // the photo is decoded once (it is big); the caption is drawn over it
-            if (drawnImg != seenImg || lastPage != page || !lastCard) {
+            if (drawnImg != seenImg || lastPage != page || !lastCard || lastHud || hudOn(now)) {
                 scr.fillScreen(0);
                 modelLock();
                 if (model.img) scr.drawJpg(model.img, model.imgLen, 25, 25, 416, 416);
@@ -912,7 +1022,8 @@ static void renderScreens(uint32_t now) {
     RingStyle rs = ringStyle(now);
     bool ringOn = rs.mode != RS_OFF;
     if (ringOn || ringDrawn) ringDraw((uint16_t *)scr.getBuffer(), SCREEN_W, SCREEN_H, true, rs);
-    if (need || ringOn || ringDrawn) { lcd.flush(scr, 0, 0, SCREEN_W, SCREEN_H); nDirtyPx += SCREEN_W * SCREEN_H; }
+    controlOverlay(now);lastHud=hudOn(now);
+    if (need || ringOn || ringDrawn || slidePrevious) { flushPage(now); nDirtyPx += SCREEN_W * SCREEN_H; }
     ringDrawn = ringOn;
     lastPage = page;
     lastCard = cardOn;
@@ -938,9 +1049,10 @@ static void render(uint32_t now) {
         drawBidiText(scr,"האייפון רוצה להתחבר",233,233,233,200,30,1,0xE6EEF2,0);
         drawBidiText(scr,"לחץ BOOT לאישור",233,233,233,255,32,1,0x80F2CD,0);
         drawBidiText(scr,"ללא אישור הבקשה תבוטל",233,233,233,310,27,1,0xA0B8B0,0);
-        lcd.flush(scr,0,0,SCREEN_W,SCREEN_H); faceNeedsClear=true; return;
+        controlOverlay(now);lcd.flush(scr,0,0,SCREEN_W,SCREEN_H); faceNeedsClear=true; return;
     }
     if (scr_) { renderScreens(now); return; }
+    static bool hadHud=false;
     bool fullClear=faceNeedsClear;
     if (faceNeedsClear) {                                   // back from a page: start from a clean screen
         faceNeedsClear = false;
@@ -953,6 +1065,7 @@ static void render(uint32_t now) {
     float dt = lastT ? (now - lastT) / 1000.f : 0.03f;
     lastT = now;
     Rect dirty = {0, 0, 0, 0};
+    if(hadHud || hudOn(now)){clearRect(HUD_RECT);unionRect(dirty,HUD_RECT);}
 
     bool liveOn=recording && model.liveTranscription && livePartial[0];
     bool subOn = sub[0] && (int32_t)(subUntil - now) > 0 && !recording;
@@ -1017,6 +1130,7 @@ static void render(uint32_t now) {
     if (statusOn && statusChanged) drawStatus(statusBright);
     statusDrawn = statusOn;
 
+    controlOverlay(now);hadHud=hudOn(now);
     uint32_t q3 = micros(); tText += q3 - q2;
     RingStyle rs = ringStyle(now);
     bool ringOn = rs.mode != RS_OFF;
@@ -1031,7 +1145,8 @@ static void render(uint32_t now) {
     if(edgeChanged && dirty.empty())dirty={0,0,2,2}; // Flush the edge even if the character is unchanged.
     ringDrawn = ringOn;
     uint32_t q4 = micros(); tRing += q4 - q3;
-    if (!dirty.empty()) { lcd.flush(scr, dirty.x0, dirty.y0, dirty.x1 - dirty.x0, dirty.y1 - dirty.y0,edgeChanged); nDirtyPx += (dirty.x1 - dirty.x0) * (dirty.y1 - dirty.y0); }
+    if(slidePrevious){flushPage(now);nDirtyPx+=SCREEN_W*SCREEN_H;}
+    else if (!dirty.empty()) { lcd.flush(scr, dirty.x0, dirty.y0, dirty.x1 - dirty.x0, dirty.y1 - dirty.y0,edgeChanged); nDirtyPx += (dirty.x1 - dirty.x0) * (dirty.y1 - dirty.y0); }
     tFlush += micros() - q4;
 }
 
@@ -1083,13 +1198,17 @@ void appBegin() {
         }
         saved.end();
     }
+    clockStyle=uiPrefs.getUChar("clockStyle",0)%CLOCK_STYLES;
     model.characterSounds=uiPrefs.getBool("pipSounds",true);
     model.shakeReaction=uiPrefs.getBool("shake",true);
     manualLocked=uiPrefs.getBool("locked",false);
     face.begin(esp_random());
     model.customPip=pipBoot();face.setAsset(model.customPip);
-    model.pip = uiPrefs.getUChar("pip",0)%pipCount(); model.pipColor = uiPrefs.getUInt("pipColor",0);
-    face.setPip(model.pip,model.pipColor);face.setReducedMotion(model.reducedMotion);
+    customCount=pipScan(pipEntries,29);
+    model.pip = uiPrefs.getUChar("pip",0)%pipCount();
+    String savedPip=uiPrefs.getString("pipId",model.customPip?model.customPip->pip:"");
+    if(savedPip.length()==32)model.pip=pipIndex(savedPip.c_str()); model.pipColor = uiPrefs.getUInt("pipColor",0);
+    showPip(model.pip,model.pipColor);face.setReducedMotion(model.reducedMotion);
     markActivity();
     esp_sleep_wakeup_cause_t why = esp_sleep_get_wakeup_cause();
     if(why==ESP_SLEEP_WAKEUP_EXT0 || (why==ESP_SLEEP_WAKEUP_EXT1 && (esp_sleep_get_ext1_wakeup_status()&(1ULL<<PIN_BOOT)))){
@@ -1110,15 +1229,21 @@ void appBegin() {
 static void setupLoop(uint32_t now) {
     static uint32_t next = 0;
     lgfx::touch_point_t tp;
-    bool t = lcd.getTouch(&tp);
-    wsetup.touch(t, tp.x, tp.y, now);
+    bool t = readTouch(tp);
+    static bool setupDown=false;static uint32_t setupLost=0;static int sx=0,sy=0;
+    if(t){sx=tp.x;sy=tp.y;setupLost=0;}else if(setupDown){if(!setupLost)setupLost=now;if(now-setupLost<200)t=true;}
+    if(t && !setupDown)edgeSwipe.begin(sx,sy,model.brightness,model.volume);
+    if(t && edgeSwipe.move(sx,sy)){wsetup.cancelTouch();updateEdge(now);}
+    if(!t && setupDown && edgeSwipe.active){wsetup.cancelTouch();finishEdge(now);}
+    else if(!edgeSwipe.active)wsetup.touch(t,sx,sy,now);
+    setupDown=t;
     if(t)markActivity();
     // Leaving network setup open must not drain the battery indefinitely.
     if(since(now,model.lastActivity)>60000){screenOff(now);return;}
     if ((int32_t)(now - next) >= 0) {
         next = now + 40;
         scr.setTextSize(1.f);
-        wsetup.render(scr, now);
+        wsetup.render(scr, now);controlOverlay(now);
         lcd.flush(scr, 0, 0, SCREEN_W, SCREEN_H);
     }
     if (!wsetup.active()) {                          // closed: back to the face, redraw everything
@@ -1138,6 +1263,7 @@ void appLoop() {
     pairingShown=pairing;
     static uint32_t nextFrame = 0, lastBat = 0, frames = 0, renderUs = 0, lastStat = 0;
     uint32_t now = millis();
+    applyModel(now); // Settings, timers and receipts also advance while Wi-Fi setup is open.
     {
         bool need;
         modelLock(); need = model.wifiSetup; modelUnlock();
@@ -1158,15 +1284,15 @@ void appLoop() {
         }
     }
     pollInputs(now);
+    if(slidePrevious && (recording || meeting || audioPlaying() || model.reducedMotion || model.assetBusy))stopSlide();
     pollImu(now);
-    applyModel(now);
     if (now - lastBat > 5000) { lastBat = now; bat = pmuRead(); netSetBattery(bat.pct, bat.mv, bat.charging, bat.usb); }
     updatePower(now);
     if (power == P_OFF) { delay(20); return; }
     // Thinking, expressions and the live ring must retain active cadence even
     // without touches; these do not reset inactivity or postpone screen sleep.
     const bool animated = recording || meeting || audioPlaying() || alarmOn || ringMode != RING_NONE || gallery || (int32_t)(emotionHoldUntil-now)>0;
-    uint32_t frameMs = power == P_DIM ? 66 : !animated && since(now,model.lastActivity)>5000 ? 42 : FRAME_MS;
+    uint32_t frameMs = slidePrevious ? 16 : power == P_DIM ? 66 : !animated && since(now,model.lastActivity)>5000 ? 42 : FRAME_MS;
     if ((int32_t)(now - nextFrame) >= 0) {
         // Keep a stable deadline, skipping missed slots instead of accumulating jitter.
         if(since(now,nextFrame)>frameMs)nextFrame=now;
@@ -1205,6 +1331,9 @@ void appSerial(const String &cmd) {
     else if (cmd == "lock") setManualLock(true);
     else if (cmd == "unlock") setManualLock(false);
     else if (cmd.startsWith("shakeacc ")) {if(shakeDetector.sample(cmd.substring(9).toFloat(),millis(),shakeAllowed()))reactToShake();}
+    else if(cmd.startsWith("touchsim ")){int down=-1,x=0,y=0;if(sscanf(cmd.c_str()+9,"%d %d %d",&down,&x,&y)>=1){touchSim=constrain(down,-1,1);touchSimX=constrain(x,0,465);touchSimY=constrain(y,0,465);}}
+    else if(cmd=="catalog"){Serial.printf("catalog: count=%d selected=%s\n",pipCount(),pipId(model.pip));for(int i=0;i<pipCount();i++)Serial.printf("  %d %s %s\n",i,pipId(i),pipName(i));}
+    else if(cmd=="controls")Serial.printf("controls: hud=%d value=%d clock=%d chooser=%d timer=%lu edge=%d local=%d\n",hudKind,hudValue,clockStyle,clockChooser,(unsigned long)timerPicker.total(),edgeSwipe.active,model.localControl);
     else if (cmd == "pipstore") pipStorageInfo();
     else if (cmd == "powerinfo") Serial.printf("power: rx=%d idle=%lu off=%lu deep=%lu setup=%d usb=%d\n",audioMicReceiverActive(),since(millis(),model.lastActivity),power==P_OFF?since(millis(),offSince):0,powerDeepDelay(model.deepMs,manualLocked,pocket,bat.present?bat.pct:-1),wsetup.active(),bat.usb);
     else if (cmd == "bat") { Battery b = pmuRead(); Serial.printf("bat present=%d %d%% %dmV usb=%d chg=%d full=%d care=%d\n", b.present, b.pct, b.mv, b.usb, b.charging, b.full, b.care); }
@@ -1223,7 +1352,7 @@ void appSerial(const String &cmd) {
         int sp = cmd.indexOf(' ', 10);
         if (sp > 0) { tx = cmd.substring(10, sp).toInt(); ty = cmd.substring(sp + 1).toInt(); wake(true); if (onScreens()) screenTap(0, 0, millis()); }
     }
-    else if (cmd.startsWith("swipe ")) { wake(true); setPage(page + (cmd.substring(6).toInt() > 0 ? 1 : -1)); }
+    else if (cmd.startsWith("swipe ")) { wake(true); setPage(page + (cmd.substring(6).toInt() > 0 ? 1 : -1),true); }
     else if (cmd == "meet") { if (meeting) stopMeeting(); else startMeeting(); }
     else if (cmd == "mic") audioMicTest();
     else if (cmd == "mictone") audioMicTone();
@@ -1244,9 +1373,13 @@ void appSerial(const String &cmd) {
         Serial.printf("SHOT %d %d\n", SCREEN_W, SCREEN_H);
         const uint8_t *p = (const uint8_t *)scr.getBuffer();
         size_t n = SCREEN_W * SCREEN_H * 2;
-        for (size_t i = 0; i < n; i += 4096) Serial.write(p + i, min((size_t)4096, n - i));
+        size_t sent=0;uint32_t progress=millis();
+        while(sent<n && millis()-progress<5000){
+            size_t wrote=Serial.write(p+sent,min((size_t)1024,n-sent));
+            if(wrote){sent+=wrote;progress=millis();}else delay(1);
+        }
         Serial.flush();
-        Serial.println("\nENDSHOT");
+        Serial.println(sent==n?"\nENDSHOT":"\nSHOT_ABORTED");
     }
     else if (cmd == "list") { for (int i = 0; i < Face::count(); i++) Serial.printf("%s ", Face::name(i)); Serial.println(); }
 }

@@ -7,7 +7,7 @@
   --text: #20312d;
   --muted: #6a8074;
   --dim: #80948a;
-  --accent: #14846a;
+  --accent: #326da8;
   --accent-ink: #fff;
   --good: #24956f;
   --r: 24px;
@@ -126,3 +126,8 @@ header #name{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:in
 html[data-theme="dark"] .brand-wordmark{filter:brightness(0) invert(1);opacity:.94}
 @media(prefers-color-scheme:dark){html[data-theme="system"] .brand-wordmark{filter:brightness(0) invert(1);opacity:.94}}
 @media(max-width:500px){header .logo.brand-wordmark{width:130px}}
+
+/* Shared slate control treatment; success/error colours stay semantic. */
+button:not(.danger), .btn:not(.danger) { border-color: #bdcee0; box-shadow: inset 0 1px 0 #ffffff26; transition: background-color 140ms ease, border-color 140ms ease; }
+button:focus-visible { outline: 2px solid #326da8; outline-offset: 3px; }
+@media(prefers-reduced-motion:reduce){button,.btn{transition:none}}

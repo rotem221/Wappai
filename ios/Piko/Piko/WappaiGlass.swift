@@ -1,8 +1,8 @@
 import SwiftUI
 extension View {
     @ViewBuilder func wappaiGlass(radius:CGFloat=28) -> some View {
-        if #available(iOS 26.0,*) {self.glassEffect(.regular,in:RoundedRectangle(cornerRadius:radius,style:.continuous))}
-        else {self.background(.ultraThinMaterial,in:RoundedRectangle(cornerRadius:radius,style:.continuous))}
+        if #available(iOS 26.0,*) {self.glassEffect(.regular,in:RoundedRectangle(cornerRadius:radius,style:.continuous)).overlay(RoundedRectangle(cornerRadius:radius,style:.continuous).strokeBorder(Color.primary.opacity(0.08),lineWidth:0.5))}
+        else {self.background(.ultraThinMaterial,in:RoundedRectangle(cornerRadius:radius,style:.continuous)).overlay(RoundedRectangle(cornerRadius:radius,style:.continuous).strokeBorder(Color.primary.opacity(0.10),lineWidth:0.5))}
     }
 }
 struct ConversationSidebar:View {

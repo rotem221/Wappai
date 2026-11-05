@@ -1,9 +1,9 @@
 """Durable preview -> approved full atlas -> validated pack -> device receipt."""
-import asyncio,base64,hashlib,json,os,re,secrets,shutil,struct,time,uuid,zlib
+import asyncio,base64,hashlib,json,logging,os,re,secrets,shutil,struct,time,uuid,zlib
 from pathlib import Path
 import httpx
 from fastapi import HTTPException,Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse,Response
 from . import config,pip_assets
 
 BUILTINS={'pip','nori','orbit'}
@@ -153,6 +153,7 @@ class PipStudio:
     async def command(self,payload,timeout=35):
         if not any(c.kind=='board' for c in self.hub.conns):raise HTTPException(409,'המכשיר אינו מחובר. הדמות נשמרה בגלריה.')
         if self.hub.task and not self.hub.task.done():raise HTTPException(409,'סיימו את השיחה הקולית לפני החלפת הדמות')
+        logging.getLogger(__name__).info("Device character command %s %s",payload.get("type"),payload.get("pip_id"))
         command_id=uuid.uuid4().hex;receipt=asyncio.get_running_loop().create_future();self.hub.receipts[command_id]=receipt
         try:
             await self.hub.emit({**payload,'command_id':command_id},only_kind='board')
@@ -162,11 +163,19 @@ class PipStudio:
         finally:self.hub.receipts.pop(command_id,None)
     async def activate(self,pid):
         async with self.device_gate:return await self._activate(pid)
+    def packed(self,aid):
+        raw=(self.root/'assets'/aid/'character.bin').read_bytes()
+        return b'WPC1'+struct.pack('<I',len(raw))+zlib.compress(raw,9)
+    def install_payload(self,p,cache=False):
+        if self.hub.device.get('pip_cache_version')==1:
+            data=self.packed(p['asset_id'])
+            return {'type':'pip.cache' if cache else 'pip.install','pip_id':p['id'],'asset_id':p['asset_id'],'packed':True,'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()}
+        manifest=json.loads((self.root/'assets'/p['asset_id']/'manifest.json').read_text())
+        return {'type':'pip.install','pip_id':p['id'],'asset_id':p['asset_id'],'sha256':manifest['sha256'],'bytes':manifest['bytes']}
     async def _activate(self,pid):
         p=self.pip(pid)
         if p.get('asset_id'):
-            manifest=json.loads((self.root/'assets'/p['asset_id']/'manifest.json').read_text())
-            await self.command({'type':'pip.install','pip_id':pid,'asset_id':p['asset_id'],'sha256':manifest['sha256'],'bytes':manifest['bytes']},60)
+            await self.command(self.install_payload(p),60)
         else:await self.command({'type':'pip.activate','pip_id':pid,'rig':p['rig'],'color':p['color']})
         self.select(pid)
         for job in self.jobs(True):
@@ -174,13 +183,24 @@ class PipStudio:
                 job.update(installed=True,installation_error='');self.save(job)
         await self.emit({'type':'pip.selected','pip':p['rig'],'pip_id':pid});return {'status':'applied'}
     async def restore(self):
+        # Block the withdrawn prototype whose ROM inflate helper exhausted the net stack.
+        if self.hub.device.get("fw_version")=="1.1.1-dev":return
         try:
             stale=self.hub.device.get('custom_pip_id')
             if stale and not self.store.rows('SELECT id FROM pips WHERE id=?',(stale,)):
                 await self.command({'type':'pip.remove','pip_id':stale})
             pid=self.selected()
             if pid:await self.activate(pid)
-        except (HTTPException,OSError,ValueError):pass
+            if self.hub.device.get('pip_cache_version')==1:
+                async with self.device_gate:
+                    for p in self.store.rows('SELECT * FROM pips WHERE asset_id IS NOT NULL ORDER BY id'):
+                        if p['id']==pid:continue
+                        try:await self.command(self.install_payload(p,cache=True),60)
+                        except HTTPException as error:
+                            logging.getLogger(__name__).warning('Character cache pending: %s (%s)',p['id'],error.status_code)
+                            break
+        except (HTTPException,OSError,ValueError) as error:
+            logging.getLogger(__name__).warning("Device gallery sync deferred: %s",str(getattr(error,"detail",error)))
     def register(self,app):
         @app.get('/v1/pip-jobs')
         async def jobs(request:Request):self.auth(request);return self.jobs()
@@ -263,6 +283,7 @@ class PipStudio:
         async def binary(aid:str,request:Request):
             if not config.DEVICE_TOKEN or not secrets.compare_digest(request.headers.get('authorization',''),'Bearer '+config.DEVICE_TOKEN):raise HTTPException(401)
             if not ID.fullmatch(aid) or not self.store.rows('SELECT id FROM pips WHERE asset_id=?',(aid,)):raise HTTPException(404)
+            if request.query_params.get('packed')=='1':return Response(self.packed(aid),media_type='application/octet-stream')
             return FileResponse(self.root/'assets'/aid/'character.bin',media_type='application/octet-stream')
         @app.post('/v1/pips/{pid}/edit')
         async def edit(pid:str,request:Request):

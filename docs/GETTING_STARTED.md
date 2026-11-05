@@ -107,3 +107,9 @@ ssh -N -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -R 127.0.0.1:18773:
 ```
 
 Keep both ends bound to loopback. Restart the Hub after configuring its environment. Never put this token in Git, a browser URL or a command-line argument. The text adapter was tested against Codex app-server 0.164; image capability depends on the installed Codex version/account. The app reports missing capability instead of pretending an image was generated.
+
+## Current device navigation
+
+Swipe sideways between pages. Drag on the right screen edge to adjust brightness, or the left edge to adjust volume; release completes the change with visual feedback (and a volume tone when sound is safe). Long-press the clock to choose one of six faces. The settings page contains Wi-Fi and screen-off; the timer has separate hours, minutes and seconds. Native and Web clients receive the applied device settings through the Hub.
+
+The public installer version may lag the source while a new artifact is being qualified. Always follow the exact board and version in the catalog. Future onboarding work is described in [the rollout plan](END_USER_ROLLOUT.he.md).
