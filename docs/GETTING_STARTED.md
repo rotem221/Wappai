@@ -55,7 +55,7 @@ Use a new backup filename each time. On Windows use a port such as `COM5`; on Li
 3. Click the connect/install button and select the USB port. ESP Web Tools shows the connection, erase choice, final installation confirmation and progress in English. Selecting a port alone does not flash firmware.
 4. Wait for completion, restart the device, then configure your own Hub and Wi-Fi as described below. There are no shared credentials in this image.
 
-The browser uses the exact bytes already verified, via an in-memory Blob. It does not upload device flash or serial logs to the site. The factory binary is the same verified public `v1.0.0-dev.1` release. The previous ZIP and command-line flash helper remain available in GitHub Releases for developers; the helper creates a backup before flashing individual parts.
+The browser uses the exact bytes already verified, via an in-memory Blob. It does not upload device flash or serial logs to the site. The factory binary is the verified public `v1.1.4-dev.1` release (firmware `1.1.4-dev`). The ZIP and command-line flash helper are also available in GitHub Releases for developers; the helper creates a backup before flashing individual parts.
 
 ### Configure your Hub after flashing
 

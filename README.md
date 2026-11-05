@@ -22,7 +22,7 @@ The current source adds a meeting library in iOS/Web, acknowledged audio chunks 
 
 ## Release status
 
-This is **v1.0.0-dev.1**, an open-source development release. The downloadable firmware targets **Waveshare ESP32-S3-Touch-AMOLED-1.75C** only. The 1.8 and 2.16 presentation models prepare for future support; do not flash this release onto them. Wi-Fi is 2.4 GHz.
+This is **v1.1.4-dev.1**, an open-source development release. The downloadable firmware targets **Waveshare ESP32-S3-Touch-AMOLED-1.75C** only. The 1.8 and 2.16 presentation models prepare for future support; do not flash this release onto them. Wi-Fi is 2.4 GHz.
 
 The iOS `.ipa` is unsigned and requires personal signing, or an Xcode build with your own team. An App Store release is planned. A personal Hub is required; no shared cloud account or credentials are bundled.
 
@@ -41,7 +41,7 @@ MIT for original code/artwork; see [third-party notices](THIRD_PARTY.md) for fon
 
 ## Display and controls — November 2026
 
-The current source adds six full-screen clock faces, a hours/minutes/seconds timer picker, right-edge brightness and left-edge volume gestures across device pages, and six persistent character slots. Slate-blue controls with subtle borders are shared by the device, native iOS, Web and presentation previews. Horizontal transitions cache their destination and use a 180 ms ease-out; recording, playback and reduced motion retain their priority.
+The current source adds six full-screen clock faces, an hours/minutes/seconds timer picker, right-edge brightness and left-edge volume gestures across device pages, and persistent local custom-character storage. Slate-blue controls with subtle borders are shared by the device, native iOS, Web and presentation previews. Horizontal transitions cache their destination and use a 180 ms ease-out; recording, playback and reduced motion retain their priority.
 
 The landing and Hub development simulator preview layouts at 466×466, 368×448 and 480×480. Only the 1.75C firmware is currently hardware-qualified for development use; the other previews do not imply working board drivers.
 
